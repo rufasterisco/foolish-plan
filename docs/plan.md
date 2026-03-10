@@ -27,3 +27,6 @@ install script (independent, ships everything)
 - **/explode (YOLOS)** — autonomous coding in a jailed container. Depends on dev container + execution contexts.
 - **Local Docker registry** — pull-only access from container. Plugs into dev container.
 - **Credential proxy** — controlled way to pass creds into the jail. Plugs into execution contexts.
+- **VS Code extension** — spawn terminals automatically for /connect and /think sessions.
+- **/think resume** — resume an existing think session by issue id-slug. Reopens the session in the worktree with previous context.
+- **/think discard** — abandon a think session. Delete branch, worktree, clean up.
