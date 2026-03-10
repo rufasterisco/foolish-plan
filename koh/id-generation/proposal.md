@@ -8,23 +8,25 @@ A single function/script that returns the next issue ID. All other scripts call 
 
 ```sh
 # called by other scripts
-next_id=$(koh/bin/next-id)
+source koh/lib/id.sh
+next_id
 # returns: 4
 ```
 
-## Strategy: sequential
+## Strategy: sequential, branch-based
 
-- Scan `koh/issues/` for existing folders
-- Each folder starts with `<number>-` (e.g. `3-add-auth`)
+- Scan git branches matching the koh pattern: `<number>-<slug>`
 - Extract the numbers, find the highest, return highest + 1
-- If no folders exist, return 1
+- If no matching branches exist, return 1
+- Branches are the source of truth — they exist even before issue files are merged to main
 
 ## Steps
 
-### Step 1: scan existing issues
+### Step 1: scan branches
 
-- `ls koh/issues/` and extract leading numbers
-- Handle: empty directory, non-numeric folders (skip them), gaps in sequence (don't fill — just use max + 1)
+- `git branch --list '[0-9]*-*'` to find koh-pattern branches
+- Extract the leading number from each branch name
+- Handle: non-matching branches (skip), gaps in sequence (don't fill — just use max + 1)
 
 ### Step 2: return next number
 
@@ -32,15 +34,13 @@ next_id=$(koh/bin/next-id)
 
 ## Implementation
 
-A shell function in a shared library file that other scripts source. Something like:
-
 ```sh
 # koh/lib/id.sh
 next_id() {
-  local issues_dir="$1"
   local max=0
-  for dir in "$issues_dir"/*/; do
-    num=$(basename "$dir" | grep -oE '^[0-9]+' || true)
+  local num
+  for branch in $(git branch --list '[0-9]*-*' --format='%(refname:short)'); do
+    num=$(echo "$branch" | grep -oE '^[0-9]+' || true)
     if [ -n "$num" ] && [ "$num" -gt "$max" ]; then
       max="$num"
     fi
@@ -51,5 +51,4 @@ next_id() {
 
 ## Open questions
 
-1. **Concurrency** — two `/think` calls at the same time could get the same ID. Acceptable for now? Could use a lock file later.
-2. **Where does it scan?** — the main repo's `koh/issues/`, or the worktree's? Since worktrees branch off, the main repo has the most complete view. But branches might have issues not yet merged. Probably scan main repo.
+1. **Concurrency** — two `/think` calls at the same time could get the same ID. Acceptable for now (single machine, single user).

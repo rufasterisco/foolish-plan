@@ -2,15 +2,16 @@
 
 ## What it is
 
-A shell script the user runs from the host. It takes a slug and a rough idea, launches a Claude session to flesh it out into a structured issue, saves both the issue file and the session recording, creates a branch + worktree, and commits everything.
+A shell script + slash command. The user starts a conversation with claude, describes what they want to build, and together they flesh it out into a structured issue with an execution plan. The script handles the deterministic parts (ID, branch, worktree, recording, commit). Claude handles the thinking.
 
 ## Interface
 
 ```sh
-koh/bin/think <slug> "<idea>"
+# as a slash command inside claude:
+/think add-auth
 
-# example:
-koh/bin/think add-auth "Add JWT authentication to the API endpoints. Use RS256 keys."
+# claude then asks the user what they want to build, they discuss,
+# and claude writes the issue file + runs the script to set everything up
 ```
 
 ## Output
@@ -23,70 +24,47 @@ A git branch `<id>-<slug>` with a worktree, containing one commit:
   think-recording.jsonl # session log (copied from ~/.claude/projects/)
 ```
 
-## Steps
+## Architecture
 
-### Step 0: worktree guard
+The slash command (`.claude/commands/think.md`) is the orchestration layer. It tells claude to:
+1. Ask the user what needs to be done
+2. Build an execution plan together
+3. Run the shell scripts to set up branch/worktree/issue dir
+4. Write `issue.md` with the agreed plan
+5. Run the shell scripts to extract the recording and commit
 
-- Refuse to run inside a worktree. All koh commands must run from the main repo checkout.
-- Detection: `git rev-parse --git-common-dir` differs from `git rev-parse --git-dir` → you're in a worktree.
-- This is a shared guard (same check in every koh script). Lives in `koh/lib/guards.sh`.
+The shell scripts do the deterministic work. Claude is the glue.
 
-### Step 1: next-id
+## Scripts needed
 
-- Read existing `koh/issues/` folders, find highest number, add 1
-- If no folders exist, start at 1
-- Separate function (README says ID generation is its own module)
-- Input: path to `koh/issues/`
-- Output: a number (e.g. `4`)
+### koh/bin/think-setup
 
-### Step 2: slug
+Deterministic setup — run before the conversation:
+1. Worktree guard (refuse if inside a worktree)
+2. Generate next ID (from `koh/lib/id.sh`, scans branches)
+3. Sanitize slug (lowercase, hyphens only)
+4. Create branch + worktree at `.koh-worktrees/<id>-<slug>`
+5. Create issue directory: `<worktree>/koh/issues/<id>-<slug>/`
+6. Print the ID, slug, worktree path, and issue dir path (so claude knows where to write)
 
-- User provides it as the first argument: `koh think add-auth "..."`
-- Sanitize: lowercase, hyphens only, no special chars
-- No API call needed
+### koh/bin/think-finish
 
-### Step 3: branch + worktree
+Deterministic cleanup — run after claude writes `issue.md`:
+1. Extract recording (from `koh/lib/recording.sh`)
+2. Commit issue.md + recording in the worktree
+3. Print confirmation
 
-- Branch name: `<id>-<slug>` (e.g. `4-add-auth`)
-- Create worktree: `git worktree add <worktree-location> -b <id>-<slug>`
-- `/think` works inside the worktree — writes `issue.md` there, commits there
-- This way the issue file lives on the feature branch from the start
-- The worktree is ready for `/explode` to use later
+## Slash command prompt
 
-### Step 4: issue directory
-
-- `mkdir -p <worktree>/koh/issues/<id>-<slug>/`
-
-### Step 5: claude session
-
-- Run from inside the worktree directory (so claude sees the right project context)
-- `claude -p "<prompt>" --output-format stream-json --verbose | tee <tmp-file>`
-- Uses `-p` (non-interactive, one-shot). The user provides the idea upfront, claude structures it.
-- The prompt tells claude to write `koh/issues/<id>-<slug>/issue.md` with sections:
-  - Problem
-  - Solution
-  - Execution
-  - Acceptance Criteria
-
-### Step 6: session ID
-
-- Parse from the stream-json output: `jq -r '.session_id // empty' <tmp-file> | head -1`
-- The first line (type `system`) contains the session ID
-
-### Step 7: recording
-
-- Session log path: `~/.claude/projects/<project-dir-encoded>/<session-id>.jsonl`
-- Project dir encoding: absolute worktree path with `/` replaced by `-`, leading `-`
-- Copy to `<worktree>/koh/issues/<id>-<slug>/think-recording.jsonl`
-
-### Step 8: commit
-
-- `git add koh/issues/<id>-<slug>/issue.md koh/issues/<id>-<slug>/think-recording.jsonl`
-- `git commit -m "<id>-<slug>: plan issue"`
+`.claude/commands/think.md` — lightweight:
+- Run `koh/bin/think-setup <slug>` to set up branch and worktree
+- Ask the user to explain what needs to be done
+- Together, build an execution plan
+- Write `issue.md` at the path provided by think-setup, with sections: Problem, Solution, Execution, Acceptance Criteria
+- Run `koh/bin/think-finish <id-slug> <worktree-path>` to extract recording and commit
 
 ## Open questions
 
-1. **Worktree location** — `../koh-worktrees/<id>-<slug>` relative to the repo? Needs a convention.
-2. **Project dir encoding** — need to verify exactly how claude encodes the worktree path into the `~/.claude/projects/` directory name. We saw `-Users-francesco-deleteme-koh-recording-test` — is it always just slashes replaced by hyphens?
-3. **Claude prompt** — needs to be crafted carefully. Should we give it a template file?
-4. **Error handling** — what if claude fails, what if the branch already exists, etc.
+1. **Worktree location** — `.koh-worktrees/<id>-<slug>` inside the repo root. Added to `.gitignore`.
+2. **Project dir encoding** — confirmed: `tr '/' '-'` on the absolute path.
+3. **Session ID for recording** — since think is interactive, we can't get the session ID from `-p` output. Options: grab the newest `.jsonl` in the project dir, or find another way. Newest file should work since think-finish runs immediately after the session.
