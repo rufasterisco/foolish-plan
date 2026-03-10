@@ -2,40 +2,20 @@
 
 You are helping the user plan a new coding task. Follow these steps in order.
 
-## Step 1: Understand the task
+## Step 1: Setup
 
-The user may have described what they want inline with `/think`, or they may have been discussing it in the conversation already. Either way, have a quick conversation to understand:
-- What problem are they solving?
-- What's the desired outcome?
-- Any constraints or preferences?
+Generate a short slug from what the user said or from the conversation so far. Lowercase, hyphens, as short as it can be while still clear (e.g. `add-auth`, `fix-login`, `refactor-db`).
 
-Keep it lightweight — don't over-interview. A few exchanges should be enough. If the user already explained enough, move on.
-
-## Step 2: Setup
-
-Generate a short slug (2-3 words, lowercase, hyphens) that captures the essence of the task. Examples: `add-auth`, `fix-login-bug`, `refactor-db-layer`.
-
-Run the setup script:
+Run:
 ```
 .koh/bin/think-setup <slug>
 ```
 
-This creates a branch, worktree, and issue directory. It prints KEY=VALUE lines — save these values, you'll need them:
-- `KOH_ID_SLUG` — the issue identifier (e.g. `4-add-auth`)
-- `KOH_WORKTREE` — the worktree path
-- `KOH_ISSUE_DIR` — where to write `issue.md`
+Save the KEY=VALUE output — you'll need `KOH_ID_SLUG`, `KOH_WORKTREE`, and `KOH_ISSUE_DIR`.
 
-If the script fails, show the error to the user and stop.
+## Step 2: Write the execution plan
 
-## Step 3: Write the execution plan
-
-Together with the user, build an execution plan. Then write `issue.md` at the path from `KOH_ISSUE_DIR`:
-
-```
-<KOH_ISSUE_DIR>/issue.md
-```
-
-Use this structure:
+Together with the user, build an execution plan. Write `issue.md` at `<KOH_ISSUE_DIR>/issue.md`:
 
 ```markdown
 # <KOH_ID_SLUG>: <short title>
@@ -53,13 +33,11 @@ Step-by-step plan. Be specific about files, functions, and changes.
 How to verify the work is done correctly.
 ```
 
-## Step 4: Finish
+## Step 3: Finish
 
 After the user confirms the plan looks good, run:
 ```
 .koh/bin/think-finish <KOH_ID_SLUG> <KOH_WORKTREE>
 ```
-
-This extracts the session recording and commits everything to the branch.
 
 Tell the user they can now run `/koh/explode <KOH_ID_SLUG>` to start coding.
