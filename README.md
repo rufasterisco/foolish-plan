@@ -3,6 +3,8 @@
 
 # koh
 
+© 2026 [rufasterisco](https://github.com/rufasterisco). All rights reserved. See [LICENSE](LICENSE).
+
 An organized way to record what happens in coding sessions with a coding agent. Currently supports Claude Code.
 
 ## Setup
