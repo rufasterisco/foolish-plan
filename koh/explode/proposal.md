@@ -35,6 +35,12 @@ Plus whatever code changes claude made during the session (already committed by 
 
 ## Steps
 
+### Step 0: worktree guard
+
+- Refuse to run inside a worktree. All koh commands must run from the main repo checkout.
+- Detection: `git rev-parse --git-common-dir` differs from `git rev-parse --git-dir` → you're in a worktree.
+- This is a shared guard (same check in every koh script). Lives in `koh/lib/guards.sh`.
+
 ### Step 1: validate
 
 - Check that the `<id-slug>` argument is provided
