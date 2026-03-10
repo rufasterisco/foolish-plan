@@ -14,7 +14,7 @@ Generate a short slug from what the user said or from the conversation so far. L
 ```
 
 **B) Summarize context (if any):**
-If there has been prior conversation before `/think` was invoked, write a concise summary of what was discussed — the problem, any decisions made, constraints mentioned. This will be passed to the new session so no context is lost.
+If there has been prior conversation before `/think` was invoked, write a summary of what was discussed. This will be passed to the new session so no context is lost.
 
 If `/think` is the first thing the user said, just use their input directly.
 
