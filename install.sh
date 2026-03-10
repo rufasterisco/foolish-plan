@@ -96,8 +96,9 @@ echo "Slash commands installed to .claude/commands/koh/"
 # --- Step 6: update .gitignore ---
 
 gitignore_entries=(
-  "# koh worktrees"
+  "# koh"
   ".koh-worktrees/"
+  ".seed-output.jsonl"
 )
 
 touch .gitignore

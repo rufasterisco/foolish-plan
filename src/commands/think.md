@@ -20,7 +20,7 @@ The setup script created `<KOH_ISSUE_DIR>/issue.md` from a template. If there ha
 ## Step 3: Seed the new session
 
 ```
-cd <KOH_WORKTREE> && claude -p "<summary or user input>. You are in a koh /think session. Help the user plan this task. The issue template is at koh/issues/<KOH_ID_SLUG>/issue.md — read it, fill in all sections. When the plan is ready, the user will run /koh/explode to start coding." --output-format stream-json --verbose > /tmp/koh-seed-<KOH_ID_SLUG>.jsonl
+cd <KOH_WORKTREE> && claude -p "<summary or user input>. You are in a koh /think session. Help the user plan this task. The issue template is at koh/issues/<KOH_ID_SLUG>/issue.md — read it, fill in all sections. When the plan is ready, the user will run /koh/explode to start coding." --output-format stream-json --verbose > <KOH_ISSUE_DIR>/.seed-output.jsonl
 ```
 
 ## Step 4: Tell the user
