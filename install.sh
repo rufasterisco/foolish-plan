@@ -122,7 +122,7 @@ if [ -d ".koh/bin" ] && [ -d ".claude/commands/koh" ]; then
   echo ""
   echo "=== koh updated ==="
   echo ""
-  echo "Use \033[36m/koh:think\033[0m to plan, \033[36m/koh:explode\033[0m to code."
+  printf "Use \033[36m/koh:think\033[0m to plan, \033[36m/koh:explode\033[0m to code.\n"
   echo ""
   exit 0
 fi
