@@ -1,28 +1,17 @@
 # /explode — Start a coding session
 
-You are helping the user launch a coding session for an existing koh issue.
+You are helping the user launch a coding session for an existing koh issue. This command must be run from inside a koh worktree (created by /think).
 
-## Step 1: Identify the issue
-
-The user should have provided an id-slug as an argument: `/explode <id-slug>`
-
-If they didn't, ask them which issue to work on.
-
-## Step 2: Launch
+## Step 1: Launch
 
 Run the explode script:
 ```
-.koh/bin/explode <id-slug>
+.koh/bin/explode
 ```
 
-This will:
-1. Validate the worktree and issue file exist
-2. Seed a new claude session with the issue's execution plan
-3. Launch an interactive session in a tmux window
+No arguments needed — the script detects the issue from the current branch.
 
-The script will print how to connect to the tmux session.
-
-## Step 3: Tell the user
+## Step 2: Tell the user
 
 After the script runs, tell the user:
 - The tmux session name (e.g. `koh-4-add-auth`)

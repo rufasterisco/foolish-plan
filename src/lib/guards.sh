@@ -21,6 +21,25 @@ assert_not_worktree() {
   fi
 }
 
+# Require running inside a git worktree.
+assert_is_worktree() {
+  local git_dir git_common_dir
+  git_dir=$(git rev-parse --git-dir 2>/dev/null) || {
+    echo "ERROR: not inside a git repository" >&2
+    return 1
+  }
+  git_common_dir=$(git rev-parse --git-common-dir 2>/dev/null) || return 1
+
+  # Resolve to absolute paths for reliable comparison
+  git_dir=$(cd "$git_dir" && pwd)
+  git_common_dir=$(cd "$git_common_dir" && pwd)
+
+  if [ "$git_dir" = "$git_common_dir" ]; then
+    echo "ERROR: must run inside a koh worktree, not the main repo." >&2
+    return 1
+  fi
+}
+
 # Get the repo root (absolute path).
 repo_root() {
   git rev-parse --show-toplevel
