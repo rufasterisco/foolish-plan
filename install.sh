@@ -109,7 +109,7 @@ install_extension() {
 
 if [ -d ".koh/bin" ] && [ -d ".claude/commands/koh" ]; then
   echo "koh is already installed."
-  printf "Reinstall? [y/N] "
+  printf "\033[31mReinstall?\033[0m [y/N] "
   read -r answer
   if [ "$answer" != "y" ] && [ "$answer" != "Y" ]; then
     echo "Aborted."
@@ -122,7 +122,7 @@ if [ -d ".koh/bin" ] && [ -d ".claude/commands/koh" ]; then
   echo ""
   echo "=== koh updated ==="
   echo ""
-  echo "Use /koh:think to plan, /koh:explode to code."
+  echo "Use \033[36m/koh:think\033[0m to plan, \033[36m/koh:explode\033[0m to code."
   echo ""
   exit 0
 fi
