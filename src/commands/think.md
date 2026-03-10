@@ -1,43 +1,38 @@
 # /think — Plan a new koh issue
 
-You are helping the user plan a new coding task. Follow these steps in order.
+You are helping the user start a new planning session. Follow these steps in order.
 
-## Step 1: Setup
+## Step 1: Setup and context (parallel)
 
-Generate a short slug from what the user said or from the conversation so far. Lowercase, hyphens, as short as it can be while still clear (e.g. `add-auth`, `fix-login`, `refactor-db`).
+Do both of these in parallel:
 
-Run in the background:
+**A) Run setup in the background:**
+Generate a short slug from what the user said or from the conversation so far. Lowercase, hyphens, as short as possible while still clear (e.g. `add-auth`, `fix-login`, `refactor-db`).
+
 ```
 .koh/bin/think-setup <slug>
 ```
 
-Continue talking to the user while it runs. When it completes, save the KEY=VALUE output — you'll need `KOH_ID_SLUG`, `KOH_WORKTREE`, and `KOH_ISSUE_DIR`.
+**B) Summarize context (if any):**
+If there has been prior conversation before `/think` was invoked, write a concise summary of what was discussed — the problem, any decisions made, constraints mentioned. This will be passed to the new session so no context is lost.
 
-## Step 2: Write the execution plan
+If `/think` is the first thing the user said, just use their input directly.
 
-Together with the user, build an execution plan. Write `issue.md` at `<KOH_ISSUE_DIR>/issue.md`:
+## Step 2: Seed the new session
 
-```markdown
-# <KOH_ID_SLUG>: <short title>
+Once setup completes, `cd` into the worktree and seed a new claude session:
 
-## Problem
-What needs to be done and why.
-
-## Solution
-The approach — what will be built/changed.
-
-## Execution
-Step-by-step plan. Be specific about files, functions, and changes.
-
-## Acceptance criteria
-How to verify the work is done correctly.
+```
+cd <KOH_WORKTREE> && claude -p "<summary or user input>. You are in a koh /think session. Help the user plan this task and write an issue.md with sections: Problem, Solution, Execution, Acceptance Criteria. Write it to koh/issues/<KOH_ID_SLUG>/issue.md. When the plan is ready, the user will run /koh/explode to start coding." --output-format stream-json --verbose > /tmp/koh-seed-<KOH_ID_SLUG>.jsonl
 ```
 
-## Step 3: Finish
+## Step 3: Tell the user
 
-After the user confirms the plan looks good, run:
 ```
-.koh/bin/think-finish <KOH_ID_SLUG> <KOH_WORKTREE>
-```
+Planning session ready for <KOH_ID_SLUG>.
 
-Tell the user they can now run `/koh/explode <KOH_ID_SLUG>` to start coding.
+Open a new terminal and run:
+  cd <KOH_WORKTREE> && claude --continue
+
+When the plan is done, run /koh/explode <KOH_ID_SLUG> to start coding.
+```
