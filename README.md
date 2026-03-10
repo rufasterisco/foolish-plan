@@ -1,7 +1,7 @@
 > *"Put these foolish ambitions to rest."*
 > — Margit, the Fell Omen
 
-# foolish-plan
+# koh
 
 An organized way to record what happens in coding sessions with a coding agent. Currently supports Claude Code.
 
@@ -10,10 +10,10 @@ An organized way to record what happens in coding sessions with a coding agent. 
 Run the init script in any repo:
 
 ```sh
-curl -fsSL https://raw.githubusercontent.com/rufasterisco/foolish-plan/master/init.sh | sh
+curl -fsSL https://raw.githubusercontent.com/rufasterisco/koh/master/init.sh | sh
 ```
 
-This copies scripts and slash commands into `.claude/fool/` inside the repo, and:
+This copies scripts and slash commands into `.claude/koh/` inside the repo, and:
 - Verifies all requirements are in place (Claude Code, git, etc.)
 - Installs custom slash commands into Claude Code
 
@@ -21,12 +21,12 @@ This copies scripts and slash commands into `.claude/fool/` inside the repo, and
 
 Each coding session produces two artifacts that get committed alongside the code:
 
-- **Issue file** (`./fool/issues/`) — describes the intent and plan for the session
+- **Issue file** (`./koh/issues/`) — describes the intent and plan for the session
   - Problem
   - Solution
   - Execution
   - Acceptance criteria
-- **Recording file** (`./fool/recordings/`) — a log of the reasoning throughout the session, whether it's a human-AI conversation or the AI working autonomously. User and AI contributions are labeled separately, so code reviewers can see what the human asked about during the session
+- **Recording file** (`./koh/recordings/`) — a log of the reasoning throughout the session, whether it's a human-AI conversation or the AI working autonomously. User and AI contributions are labeled separately, so code reviewers can see what the human asked about during the session
 
 ## Modes
 
@@ -89,7 +89,7 @@ The agent **can** read other branches' content via git commands (`git show A:fil
 Issue folders and branches use the format `<number>-<slug>` (e.g. `3-add-auth`). Each issue lives in:
 
 ```
-./fool/issues/<number>-<slug>/
+./koh/issues/<number>-<slug>/
   issue.md
   recording.md
 ```
