@@ -16,13 +16,13 @@ scrub_recording() {
   local file="$1"
 
   if ! command -v gitleaks >/dev/null 2>&1; then
-    echo "WARNING: gitleaks not installed, skipping secret scrubbing" >&2
-    return 0
+    echo "ERROR: gitleaks is required for recording extraction (brew install gitleaks)" >&2
+    return 1
   fi
 
   local report
   report=$(mktemp)
-  trap "rm -f $report" RETURN
+  trap 'rm -f "$report"' RETURN
 
   # Scan the file for secrets (exit code 1 = secrets found, not an error)
   gitleaks detect --source "$file" --report-format json --report-path "$report" --no-git 2>/dev/null || true

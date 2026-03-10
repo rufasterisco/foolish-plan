@@ -27,6 +27,8 @@ if [ -z "$id_slug" ] || [ "$id_slug" = "HEAD" ]; then
   exit 1
 fi
 
+assert_valid_id_slug "$id_slug"
+
 root=$(repo_root)
 issue_dir="$root/koh/issues/$id_slug"
 
@@ -60,7 +62,7 @@ fi
 echo "Seeding claude with issue file..."
 
 tmp_output=$(mktemp)
-trap "rm -f $tmp_output" EXIT
+trap 'rm -f "$tmp_output"' EXIT
 
 claude -p "Read koh/issues/$id_slug/issue.md. This is the execution plan. Summarize what you're about to do, then wait for the user to confirm before starting." \
   --output-format stream-json --verbose \
@@ -82,22 +84,22 @@ echo "Session ID: $session_id"
 # This script runs claude --resume, and after it exits, extracts the recording.
 
 wrapper=$(mktemp)
-cat > "$wrapper" << WRAPPER_EOF
+cat > "$wrapper" << 'WRAPPER_EOF'
 #!/bin/bash
-cd "$root"
-claude --resume "$session_id"
+cd "$KOH_ROOT"
+claude --resume "$KOH_SESSION_ID"
 
 # --- Post-session: extract recording and commit ---
 echo ""
 echo "=== Session ended. Extracting recording... ==="
 
-source "$LIB_DIR/recording.sh"
+source "$KOH_LIB_DIR/recording.sh"
 
-if extract_recording "$session_id" "$root" "$issue_dir/explode-recording.jsonl" 2>/dev/null; then
+if extract_recording "$KOH_SESSION_ID" "$KOH_ROOT" "$KOH_ISSUE_DIR/explode-recording.jsonl" 2>/dev/null; then
   echo "Recording saved."
-  cd "$root"
-  git add "koh/issues/$id_slug/explode-recording.jsonl"
-  git commit -m "$id_slug: add explode recording" || true
+  cd "$KOH_ROOT"
+  git add "koh/issues/$KOH_ID_SLUG/explode-recording.jsonl"
+  git commit -m "$KOH_ID_SLUG: add explode recording" || true
   echo "Recording committed."
 else
   echo "WARNING: could not extract recording."
@@ -105,7 +107,7 @@ fi
 
 echo ""
 echo "=== /explode complete ==="
-echo "Branch: $id_slug"
+echo "Branch: $KOH_ID_SLUG"
 echo ""
 echo "Press enter to close this tmux session."
 read
@@ -113,6 +115,12 @@ WRAPPER_EOF
 chmod +x "$wrapper"
 
 # --- Launch tmux session ---
+
+export KOH_ROOT="$root"
+export KOH_SESSION_ID="$session_id"
+export KOH_LIB_DIR="$LIB_DIR"
+export KOH_ISSUE_DIR="$issue_dir"
+export KOH_ID_SLUG="$id_slug"
 
 tmux new-session -d -s "koh-$id_slug" -c "$root" "bash $wrapper; rm -f $wrapper"
 

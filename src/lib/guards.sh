@@ -40,6 +40,15 @@ assert_is_worktree() {
   fi
 }
 
+# Validate that a string matches the koh id-slug format (e.g. "4-add-auth").
+assert_valid_id_slug() {
+  local id_slug="$1"
+  if ! [[ "$id_slug" =~ ^[0-9]+-[a-z0-9-]+$ ]]; then
+    echo "ERROR: '$id_slug' does not match koh naming convention (expected: <number>-<slug>)" >&2
+    return 1
+  fi
+}
+
 # Get the repo root (absolute path).
 repo_root() {
   git rev-parse --show-toplevel
