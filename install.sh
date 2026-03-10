@@ -77,6 +77,9 @@ cp "$KOH_SRC/bin/koh-tmux"     .koh/bin/koh-tmux
 
 chmod +x .koh/bin/*
 
+mkdir -p .koh/templates
+cp "$KOH_SRC/templates/issue.md" .koh/templates/issue.md
+
 echo "Scripts installed to .koh/"
 
 # --- Step 5: install slash commands ---
