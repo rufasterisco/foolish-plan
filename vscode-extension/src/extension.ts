@@ -36,7 +36,7 @@ function attachToSession(sessionName: string) {
     name: sessionName,
     shellPath: process.env.SHELL,
     shellArgs: ["-c", `tmux attach-session -t "${sessionName}"`],
-    location: { viewColumn: vscode.ViewColumn.Active },
+    location: vscode.TerminalLocation.Editor,
   });
   terminal.show();
 }

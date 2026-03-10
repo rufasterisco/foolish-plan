@@ -44,6 +44,7 @@ fi
 
 # --- Launch tmux session ---
 
-tmux new-session -d -s "koh-$id_slug" -c "$worktree_dir" "unset CLAUDECODE; claude; exec bash"
+tmux new-session -d -s "koh-$id_slug" -c "$worktree_dir" \
+  "unset CLAUDECODE; claude --append-system-prompt-file koh/issues/$id_slug/issue.md; exec bash"
 
 echo "KOH_TMUX_SESSION=koh-$id_slug"

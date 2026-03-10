@@ -117,17 +117,12 @@ if [ -d ".koh/bin" ] && [ -d ".claude/commands/koh" ]; then
   fi
 
   echo ""
-  echo "Updating koh tooling..."
   install_tooling
   install_extension
   echo ""
   echo "=== koh updated ==="
-  echo "  .koh/bin/          scripts (updated)"
-  echo "  .koh/lib/          shared libraries (updated)"
-  echo "  .koh/templates/    templates (updated)"
-  echo "  .claude/commands/  slash commands (updated)"
   echo ""
-  echo "Issues, worktrees, and branches were not touched."
+  echo "Use /think to plan, /explode to code."
   exit 0
 fi
 
@@ -167,14 +162,8 @@ fi
 echo ""
 echo "=== koh installed ==="
 echo ""
-echo "Installed:"
-echo "  .koh/bin/          scripts"
-echo "  .koh/lib/          shared libraries"
-echo "  .koh/templates/    templates"
-echo "  .claude/commands/  slash commands (/think, /explode)"
-echo "  koh/issues/        issue files (committed with your code)"
+echo "Commit the koh files:"
+echo "  git add .koh .claude/commands koh .gitignore"
 echo ""
-echo "Next steps:"
-echo "  1. Commit the koh files: git add .koh .claude/commands koh .gitignore"
-echo "  2. Start planning: /think <slug>"
+echo "Then use /think to plan an issue, /explode to start coding."
 echo ""
