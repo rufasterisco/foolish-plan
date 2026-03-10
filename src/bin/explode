@@ -53,7 +53,7 @@ fi
 
 if tmux has-session -t "koh-$id_slug" 2>/dev/null; then
   echo "ERROR: tmux session 'koh-$id_slug' already exists" >&2
-  echo "Use: koh-tmux connect $id_slug" >&2
+  echo "Use: tmux attach -t koh-$id_slug" >&2
   exit 1
 fi
 
@@ -126,4 +126,4 @@ tmux new-session -d -s "koh-$id_slug" -c "$root" "bash $wrapper; rm -f $wrapper"
 
 echo ""
 echo "=== tmux session created: koh-$id_slug ==="
-echo "Attach with: koh-tmux connect $id_slug"
+echo "Attach with: tmux attach -t koh-$id_slug"

@@ -46,14 +46,15 @@ echo "Repo: $repo_root"
 SCRIPT_PATH="${BASH_SOURCE[0]:-$0}"
 if [ -f "$SCRIPT_PATH" ]; then
   # Running from a file — assume koh repo is cloned
-  KOH_SRC="$(cd "$(dirname "$SCRIPT_PATH")" && pwd)/src"
+  KOH_ROOT="$(cd "$(dirname "$SCRIPT_PATH")" && pwd)"
+  KOH_SRC="$KOH_ROOT/src"
 else
   # Running from pipe (curl | sh) — download to tmp
-  KOH_SRC=$(mktemp -d)
-  trap "rm -rf $KOH_SRC" EXIT
+  KOH_ROOT=$(mktemp -d)
+  trap "rm -rf $KOH_ROOT" EXIT
   echo "Downloading koh..."
-  git clone --depth 1 https://github.com/rufasterisco/koh.git "$KOH_SRC/../koh-tmp" 2>/dev/null
-  KOH_SRC="$KOH_SRC/../koh-tmp/src"
+  git clone --depth 1 https://github.com/rufasterisco/koh.git "$KOH_ROOT" 2>/dev/null
+  KOH_SRC="$KOH_ROOT/src"
 fi
 
 if [ ! -d "$KOH_SRC/lib" ] || [ ! -d "$KOH_SRC/bin" ]; then
@@ -74,7 +75,6 @@ install_tooling() {
   cp "$KOH_SRC/bin/think-setup"  .koh/bin/think-setup
   cp "$KOH_SRC/bin/think-finish" .koh/bin/think-finish
   cp "$KOH_SRC/bin/explode"      .koh/bin/explode
-  cp "$KOH_SRC/bin/koh-tmux"     .koh/bin/koh-tmux
 
   chmod +x .koh/bin/*
 
@@ -84,8 +84,24 @@ install_tooling() {
 
   cp "$KOH_SRC/commands/think.md"    .claude/commands/koh/think.md
   cp "$KOH_SRC/commands/explode.md"  .claude/commands/koh/explode.md
-  cp "$KOH_SRC/commands/sessions.md" .claude/commands/koh/sessions.md
-  cp "$KOH_SRC/commands/connect.md"  .claude/commands/koh/connect.md
+}
+
+# --- Install VS Code extension ---
+
+install_extension() {
+  if ! command -v code >/dev/null 2>&1; then
+    echo "  VS Code CLI not found, skipping extension install."
+    return 0
+  fi
+
+  local vsix="$KOH_ROOT/vscode-extension/koh-0.1.0.vsix"
+  if [ ! -f "$vsix" ]; then
+    echo "  VS Code extension package not found, skipping."
+    return 0
+  fi
+
+  code --install-extension "$vsix" --force >/dev/null 2>&1
+  echo "  VS Code extension installed (koh: Attach to session)."
 }
 
 # --- Check if already installed ---
@@ -102,6 +118,7 @@ if [ -d ".koh/bin" ] && [ -d ".claude/commands/koh" ]; then
   echo ""
   echo "Updating koh tooling..."
   install_tooling
+  install_extension
   echo ""
   echo "=== koh updated ==="
   echo "  .koh/bin/          scripts (updated)"
@@ -135,6 +152,16 @@ for entry in "${gitignore_entries[@]}"; do
     echo "$entry" >> .gitignore
   fi
 done
+
+# --- VS Code extension (optional) ---
+
+if command -v code >/dev/null 2>&1; then
+  printf "Install VS Code extension (koh: Attach to session)? [y/N] "
+  read -r answer
+  if [ "$answer" = "y" ] || [ "$answer" = "Y" ]; then
+    install_extension
+  fi
+fi
 
 echo ""
 echo "=== koh installed ==="

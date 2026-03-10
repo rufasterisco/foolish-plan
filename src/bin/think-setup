@@ -66,39 +66,6 @@ if [ -f "$template" ]; then
       "$template" > "$issue_dir/issue.md"
 fi
 
-# --- Write VS Code task ---
-
-mkdir -p "$root/.vscode"
-cat > "$root/.vscode/koh-task.json" << TASK_EOF
-{
-  "version": "2.0.0",
-  "tasks": [
-    {
-      "label": "koh-think-$id_slug",
-      "type": "shell",
-      "command": "cd $worktree_dir && claude --continue",
-      "presentation": {
-        "reveal": "always",
-        "panel": "new",
-        "focus": true
-      }
-    }
-  ]
-}
-TASK_EOF
-
-# Merge into existing tasks.json or create it
-if [ -f "$root/.vscode/tasks.json" ]; then
-  # Add task to existing file using jq
-  jq --argjson new "$(jq '.tasks[0]' "$root/.vscode/koh-task.json")" \
-    '.tasks = [($new)] + [.tasks[] | select(.label | startswith("koh-") | not)] + [.tasks[] | select(.label | startswith("koh-"))]' \
-    "$root/.vscode/tasks.json" > "$root/.vscode/tasks.tmp" \
-    && mv "$root/.vscode/tasks.tmp" "$root/.vscode/tasks.json"
-else
-  mv "$root/.vscode/koh-task.json" "$root/.vscode/tasks.json"
-fi
-rm -f "$root/.vscode/koh-task.json"
-
 # --- Output (parseable) ---
 
 echo "KOH_ID=$id"
