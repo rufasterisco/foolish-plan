@@ -36,6 +36,7 @@ Runs the coding session inside a [Claude Code dev container](https://code.claude
 
 - No external credentials are passed in
 - No access to the local filesystem
+- No git push credentials (no SSH keys, no tokens, no `GIT_ASKPASS`)
 
 This means there's no guarantee that code won't be exfiltrated (e.g. via prompt injection), which is a security trade-off you don't need to worry about in open source projects. What you *can* be sure of is that nothing leaks out of the container into your local environment.
 
@@ -68,9 +69,32 @@ Both modes run inside tmux, so you can attach to any session at any time. We pro
 
 ## Worktrees
 
-Each session runs in its own git worktree. In container mode, the worktree is mounted into the container. Git commands (commit, push) can be issued both from inside the session and from outside.
+Each session runs in its own git worktree. In container mode, the worktree is mounted read-write into the container. The host picks up commits after the session ends — the agent never pushes directly.
 
 Worktrees persist after the session ends. They can be cleaned up after the branch is merged/PR'd — since it's just a branch checkout, you can always check it out again from the main repo.
+
+### Branch isolation
+
+Git worktrees provide branch isolation by design. If you have worktrees A and B:
+
+- The container for session B only has worktree B mounted — no filesystem access to worktree A's directory
+- `git checkout A` fails inside B's container because git knows branch A is checked out in another worktree
+- The agent cannot commit to branch A without checking it out
+- Without push credentials, the agent can't push anything to remote
+
+The agent **can** read other branches' content via git commands (`git show A:file`), since the object store is shared. This is acceptable — the concern is preventing writes, not reads. A compromised agent in session B cannot inject code into session A's worktree or any remote branch.
+
+### Naming
+
+Issue folders and branches use the format `<number>-<slug>` (e.g. `3-add-auth`). Each issue lives in:
+
+```
+./fool/issues/<number>-<slug>/
+  issue.md
+  recording.md
+```
+
+ID generation is encapsulated in its own module — other scripts call it, never generate IDs themselves. At setup, you choose the ID strategy (currently: sequential). This can be swapped later for date-based, UUID, or external (e.g. GitHub issue number) without changing the rest of the system.
 
 ## Slash commands
 
@@ -87,6 +111,26 @@ Two approaches under investigation:
 2. **Pull from `~/.claude/projects/`** — Claude Code already saves full JSONL conversation logs per session
 
 Both preserve the full conversation (not a summary) with user/assistant labels. The best approach will be determined during development.
+
+## Security model
+
+The jail protects against a compromised agent (e.g. via prompt injection):
+
+| Threat | Mitigation |
+|---|---|
+| Push malicious code to remote | No git push credentials in container |
+| Inject code into another worktree | Worktree mount isolation — only the session's worktree is mounted |
+| Checkout another branch | Git refuses — branch already checked out in another worktree |
+| Push malicious Docker image | Local registry is pull-only from container |
+| Access host filesystem | Only the worktree is mounted, nothing else |
+| Leak secrets via commit | `.gitignore` filters the worktree; no credentials mounted by default |
+| Exfiltrate code via network | Accepted trade-off in YOLOS (open source assumption) |
+
+What the agent **can** do:
+- Read other branches' content via `git show` (shared object store)
+- Commit freely to its own branch
+- Pull images from the local registry
+- Make outbound network requests
 
 ## Open questions
 
