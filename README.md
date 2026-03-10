@@ -50,7 +50,7 @@ YOLOS runs locally (not on remote systems). The container receives code via a **
 - Credentials should be short-lived; managing them is the consumer's concern
 - Infrastructure tools (CDK, `gh`, etc.) should not be run inside the container
 
-**Docker inside the container:** Docker Compose files are available to the agent inside the dev container. A local Docker registry is set up so the container can pull host images without needing external access.
+**Docker inside the container:** Docker Compose files are available to the agent inside the dev container. A local Docker registry runs on the host — the container has **pull-only access** (no push). This lets the agent use host images without mounting the Docker socket, and prevents a compromised agent from pushing malicious images back to the registry.
 
 ### Local (planned)
 
