@@ -25,11 +25,10 @@ cd <KOH_WORKTREE> && claude -p "<summary or user input>. You are in a koh /think
 
 ## Step 4: Tell the user
 
-```
-Planning session ready for <KOH_ID_SLUG>.
+Tell the user the planning session is ready. To open it:
 
-Open a new terminal and run:
-  cd <KOH_WORKTREE> && claude --continue
+  Cmd+Shift+P → "Run Task" → koh-think-<KOH_ID_SLUG>
 
-When the plan is done, run /koh/explode <KOH_ID_SLUG> to start coding.
-```
+This opens a new terminal with claude in the worktree, with all context loaded.
+
+When the plan is done, run `/koh/explode <KOH_ID_SLUG>` to start coding.
