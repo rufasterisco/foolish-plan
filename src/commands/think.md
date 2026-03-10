@@ -2,31 +2,28 @@
 
 You are helping the user start a new planning session. Follow these steps in order.
 
-## Step 1: Setup and context (parallel)
+## Step 1: Setup
 
-Do both of these in parallel:
-
-**A) Run setup in the background:**
 Generate a short slug from what the user said or from the conversation so far. Lowercase, hyphens, as short as possible while still clear (e.g. `add-auth`, `fix-login`, `refactor-db`).
 
+Run:
 ```
 .koh/bin/think-setup <slug>
 ```
 
-**B) Summarize context (if any):**
-If there has been prior conversation before `/think` was invoked, write a summary of what was discussed. This will be passed to the new session so no context is lost.
+Save the KEY=VALUE output — you'll need `KOH_ID_SLUG`, `KOH_WORKTREE`, and `KOH_ISSUE_DIR`.
 
-If `/think` is the first thing the user said, just use their input directly.
+## Step 2: Fill in the template
 
-## Step 2: Seed the new session
+The setup script created `<KOH_ISSUE_DIR>/issue.md` from a template. If there has been prior conversation, read the template and fill in as much as possible from what was discussed.
 
-Once setup completes (it also copies the issue template into the issue directory), `cd` into the worktree and seed a new claude session:
+## Step 3: Seed the new session
 
 ```
 cd <KOH_WORKTREE> && claude -p "<summary or user input>. You are in a koh /think session. Help the user plan this task. The issue template is at koh/issues/<KOH_ID_SLUG>/issue.md — read it, fill in all sections. When the plan is ready, the user will run /koh/explode to start coding." --output-format stream-json --verbose > /tmp/koh-seed-<KOH_ID_SLUG>.jsonl
 ```
 
-## Step 3: Tell the user
+## Step 4: Tell the user
 
 ```
 Planning session ready for <KOH_ID_SLUG>.
