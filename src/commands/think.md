@@ -6,12 +6,12 @@ You are helping the user plan a new coding task. Follow these steps in order.
 
 Generate a short slug from what the user said or from the conversation so far. Lowercase, hyphens, as short as it can be while still clear (e.g. `add-auth`, `fix-login`, `refactor-db`).
 
-Run:
+Run in the background:
 ```
 .koh/bin/think-setup <slug>
 ```
 
-Save the KEY=VALUE output — you'll need `KOH_ID_SLUG`, `KOH_WORKTREE`, and `KOH_ISSUE_DIR`.
+Continue talking to the user while it runs. When it completes, save the KEY=VALUE output — you'll need `KOH_ID_SLUG`, `KOH_WORKTREE`, and `KOH_ISSUE_DIR`.
 
 ## Step 2: Write the execution plan
 
