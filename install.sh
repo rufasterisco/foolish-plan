@@ -8,13 +8,13 @@
 
 set -euo pipefail
 
-echo "=== koh init ==="
+echo "=== koh ==="
 echo ""
 
 # --- Step 1: verify requirements ---
 
 missing=""
-for cmd in git claude tmux jq; do
+for cmd in git claude tmux jq gitleaks; do
   if ! command -v "$cmd" >/dev/null 2>&1; then
     missing="$missing $cmd"
   fi
@@ -61,39 +61,67 @@ if [ ! -d "$KOH_SRC/lib" ] || [ ! -d "$KOH_SRC/bin" ]; then
   exit 1
 fi
 
-# --- Step 3: create directory structure ---
+# --- Install koh tooling ---
+# Overwrites scripts, libs, templates, and slash commands.
+# Never touches user content (koh/issues/, worktrees, branches).
 
-mkdir -p .koh/bin .koh/lib koh/issues
+install_tooling() {
+  mkdir -p .koh/bin .koh/lib .koh/templates
 
-# --- Step 4: copy scripts ---
+  cp "$KOH_SRC/lib/guards.sh"    .koh/lib/guards.sh
+  cp "$KOH_SRC/lib/id.sh"        .koh/lib/id.sh
+  cp "$KOH_SRC/lib/recording.sh" .koh/lib/recording.sh
+  cp "$KOH_SRC/bin/think-setup"  .koh/bin/think-setup
+  cp "$KOH_SRC/bin/think-finish" .koh/bin/think-finish
+  cp "$KOH_SRC/bin/explode"      .koh/bin/explode
+  cp "$KOH_SRC/bin/koh-tmux"     .koh/bin/koh-tmux
 
-cp "$KOH_SRC/lib/guards.sh"    .koh/lib/guards.sh
-cp "$KOH_SRC/lib/id.sh"        .koh/lib/id.sh
-cp "$KOH_SRC/lib/recording.sh" .koh/lib/recording.sh
-cp "$KOH_SRC/bin/think-setup"  .koh/bin/think-setup
-cp "$KOH_SRC/bin/think-finish" .koh/bin/think-finish
-cp "$KOH_SRC/bin/explode"      .koh/bin/explode
-cp "$KOH_SRC/bin/koh-tmux"     .koh/bin/koh-tmux
+  chmod +x .koh/bin/*
 
-chmod +x .koh/bin/*
+  cp "$KOH_SRC/templates/issue.md" .koh/templates/issue.md
 
-mkdir -p .koh/templates
-cp "$KOH_SRC/templates/issue.md" .koh/templates/issue.md
+  mkdir -p .claude/commands/koh
 
-echo "Scripts installed to .koh/"
+  cp "$KOH_SRC/commands/think.md"    .claude/commands/koh/think.md
+  cp "$KOH_SRC/commands/explode.md"  .claude/commands/koh/explode.md
+  cp "$KOH_SRC/commands/sessions.md" .claude/commands/koh/sessions.md
+  cp "$KOH_SRC/commands/connect.md"  .claude/commands/koh/connect.md
+}
 
-# --- Step 5: install slash commands ---
+# --- Check if already installed ---
 
-mkdir -p .claude/commands/koh
+if [ -d ".koh/bin" ] && [ -d ".claude/commands/koh" ]; then
+  echo "koh is already installed."
+  printf "Reinstall (updates tooling, keeps issues/worktrees)? [y/N] "
+  read -r answer
+  if [ "$answer" != "y" ] && [ "$answer" != "Y" ]; then
+    echo "Aborted."
+    exit 0
+  fi
 
-cp "$KOH_SRC/commands/think.md"    .claude/commands/koh/think.md
-cp "$KOH_SRC/commands/explode.md"  .claude/commands/koh/explode.md
-cp "$KOH_SRC/commands/sessions.md" .claude/commands/koh/sessions.md
-cp "$KOH_SRC/commands/connect.md"  .claude/commands/koh/connect.md
+  echo ""
+  echo "Updating koh tooling..."
+  install_tooling
+  echo ""
+  echo "=== koh updated ==="
+  echo "  .koh/bin/          scripts (updated)"
+  echo "  .koh/lib/          shared libraries (updated)"
+  echo "  .koh/templates/    templates (updated)"
+  echo "  .claude/commands/  slash commands (updated)"
+  echo ""
+  echo "Issues, worktrees, and branches were not touched."
+  exit 0
+fi
 
-echo "Slash commands installed to .claude/commands/koh/"
+# --- Fresh install ---
 
-# --- Step 6: update .gitignore ---
+echo ""
+echo "Installing koh..."
+
+install_tooling
+mkdir -p koh/issues
+
+# --- Update .gitignore ---
 
 gitignore_entries=(
   "# koh"
@@ -108,16 +136,13 @@ for entry in "${gitignore_entries[@]}"; do
   fi
 done
 
-echo ".gitignore updated"
-
-# --- Step 7: confirm ---
-
 echo ""
 echo "=== koh installed ==="
 echo ""
 echo "Installed:"
 echo "  .koh/bin/          scripts"
 echo "  .koh/lib/          shared libraries"
+echo "  .koh/templates/    templates"
 echo "  .claude/commands/  slash commands (/think, /explode)"
 echo "  koh/issues/        issue files (committed with your code)"
 echo ""
