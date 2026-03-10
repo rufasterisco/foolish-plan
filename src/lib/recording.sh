@@ -10,6 +10,14 @@ encode_project_dir() {
   echo "$abs_dir" | tr '/' '-'
 }
 
+# Get the session log directory for a working directory.
+session_log_dir() {
+  local working_dir="$1"
+  local encoded
+  encoded=$(encode_project_dir "$working_dir")
+  echo "$HOME/.claude/projects/$encoded"
+}
+
 # Scrub secrets from a file using gitleaks.
 # Detects secrets, then replaces each one with [REDACTED] in-place.
 scrub_recording() {
@@ -56,41 +64,47 @@ scrub_recording() {
   echo "Secrets scrubbed."
 }
 
-# Extract a session log by session ID.
-extract_recording() {
-  local session_id="$1"
-  local working_dir="$2"
-  local dest="$3"
+# Snapshot current .jsonl files in the session log directory.
+# Writes the list to a file. Returns the snapshot file path.
+snapshot_recordings() {
+  local working_dir="$1"
+  local snapshot_file="$2"
 
-  local encoded
-  encoded=$(encode_project_dir "$working_dir")
-  local source="$HOME/.claude/projects/$encoded/$session_id.jsonl"
+  local dir
+  dir=$(session_log_dir "$working_dir")
 
-  if [ ! -f "$source" ]; then
-    echo "ERROR: session log not found: $source" >&2
-    return 1
-  fi
-
-  cp "$source" "$dest"
-  scrub_recording "$dest"
+  ls "$dir"/*.jsonl 2>/dev/null | sort > "$snapshot_file"
 }
 
-# Extract the most recent session log for a project directory.
-extract_latest_recording() {
+# Extract recordings that are new since a snapshot.
+# Concatenates all new .jsonl files into dest, then scrubs.
+extract_new_recordings() {
   local working_dir="$1"
-  local dest="$2"
+  local snapshot_file="$2"
+  local dest="$3"
 
-  local encoded
-  encoded=$(encode_project_dir "$working_dir")
-  local dir="$HOME/.claude/projects/$encoded"
-  local source
-  source=$(ls -t "$dir"/*.jsonl 2>/dev/null | head -1)
+  local dir
+  dir=$(session_log_dir "$working_dir")
 
-  if [ -z "$source" ]; then
-    echo "ERROR: no session logs found in $dir" >&2
+  local current
+  current=$(mktemp)
+  ls "$dir"/*.jsonl 2>/dev/null | sort > "$current"
+
+  # Diff: files in current but not in snapshot
+  local new_files
+  new_files=$(comm -23 "$current" "$snapshot_file")
+  rm -f "$current"
+
+  if [ -z "$new_files" ]; then
+    echo "No new session logs found." >&2
     return 1
   fi
 
-  cp "$source" "$dest"
+  # Concatenate all new files (sorted by name, which is chronological)
+  > "$dest"
+  while IFS= read -r f; do
+    cat "$f" >> "$dest"
+  done <<< "$new_files"
+
   scrub_recording "$dest"
 }

@@ -1,8 +1,10 @@
 #!/bin/bash
 # explode: launch a coding session for a koh issue.
 # Must run from inside a koh worktree.
-# Seeds claude with the issue file via -p, then launches an interactive
-# session in tmux via --continue.
+#
+# 1. Extracts think recording (scrubbed), commits
+# 2. Launches tmux with claude
+# 3. Post-exit: extracts explode recording (scrubbed), commits
 #
 # Usage: run from inside a worktree (no arguments needed)
 
@@ -38,16 +40,28 @@ if [ ! -f "$issue_dir/issue.md" ]; then
   exit 1
 fi
 
-# --- Extract think recording if not already present ---
+# --- Snapshot existing session logs ---
 
-if [ ! -f "$issue_dir/think-recording.jsonl" ]; then
-  echo "Extracting think recording..."
-  if extract_latest_recording "$root" "$issue_dir/think-recording.jsonl" 2>/dev/null; then
-    echo "Think recording saved."
-  else
-    echo "WARNING: could not extract think recording (continuing anyway)."
-  fi
+snapshot=$(mktemp)
+trap 'rm -f "$snapshot"' EXIT
+
+snapshot_recordings "$root" "$snapshot"
+
+# --- Extract think recording ---
+
+echo "Extracting think recording..."
+if extract_new_recordings "$root" "$snapshot" "$issue_dir/think-recording.jsonl"; then
+  echo "Think recording saved."
+  cd "$root"
+  git add "koh/issues/$id_slug/think-recording.jsonl"
+  git commit -m "$id_slug: add think recording" || true
+else
+  echo "WARNING: could not extract think recording (continuing anyway)."
 fi
+
+# --- Snapshot again (after think extraction, before explode) ---
+
+snapshot_recordings "$root" "$snapshot"
 
 # --- Check tmux session doesn't already exist ---
 
@@ -57,37 +71,14 @@ if tmux has-session -t "koh-$id_slug" 2>/dev/null; then
   exit 1
 fi
 
-# --- Seed claude with -p ---
-
-echo "Seeding claude with issue file..."
-
-tmp_output=$(mktemp)
-trap 'rm -f "$tmp_output"' EXIT
-
-claude -p "Read koh/issues/$id_slug/issue.md. This is the execution plan. Summarize what you're about to do, then wait for the user to confirm before starting." \
-  --output-format stream-json --verbose \
-  > "$tmp_output" 2>&1
-
-# Extract session ID
-session_id=$(jq -r '.session_id // empty' "$tmp_output" 2>/dev/null | head -1)
-
-if [ -z "$session_id" ]; then
-  echo "ERROR: could not extract session ID from claude output" >&2
-  echo "Claude output:" >&2
-  head -5 "$tmp_output" >&2
-  exit 1
-fi
-
-echo "Session ID: $session_id"
-
 # --- Create wrapper script for tmux ---
-# This script runs claude --resume, and after it exits, extracts the recording.
 
 wrapper=$(mktemp)
 cat > "$wrapper" << 'WRAPPER_EOF'
 #!/bin/bash
+unset CLAUDECODE
 cd "$KOH_ROOT"
-claude --resume "$KOH_SESSION_ID"
+claude
 
 # --- Post-session: extract recording and commit ---
 echo ""
@@ -95,7 +86,7 @@ echo "=== Session ended. Extracting recording... ==="
 
 source "$KOH_LIB_DIR/recording.sh"
 
-if extract_recording "$KOH_SESSION_ID" "$KOH_ROOT" "$KOH_ISSUE_DIR/explode-recording.jsonl" 2>/dev/null; then
+if extract_new_recordings "$KOH_ROOT" "$KOH_SNAPSHOT" "$KOH_ISSUE_DIR/explode-recording.jsonl"; then
   echo "Recording saved."
   cd "$KOH_ROOT"
   git add "koh/issues/$KOH_ID_SLUG/explode-recording.jsonl"
@@ -117,10 +108,10 @@ chmod +x "$wrapper"
 # --- Launch tmux session ---
 
 export KOH_ROOT="$root"
-export KOH_SESSION_ID="$session_id"
 export KOH_LIB_DIR="$LIB_DIR"
 export KOH_ISSUE_DIR="$issue_dir"
 export KOH_ID_SLUG="$id_slug"
+export KOH_SNAPSHOT="$snapshot"
 
 tmux new-session -d -s "koh-$id_slug" -c "$root" "bash $wrapper; rm -f $wrapper"
 

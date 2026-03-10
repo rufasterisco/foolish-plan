@@ -73,6 +73,7 @@ install_tooling() {
   cp "$KOH_SRC/lib/id.sh"        .koh/lib/id.sh
   cp "$KOH_SRC/lib/recording.sh" .koh/lib/recording.sh
   cp "$KOH_SRC/bin/think-setup"  .koh/bin/think-setup
+  cp "$KOH_SRC/bin/think-launch" .koh/bin/think-launch
   cp "$KOH_SRC/bin/think-finish" .koh/bin/think-finish
   cp "$KOH_SRC/bin/explode"      .koh/bin/explode
 

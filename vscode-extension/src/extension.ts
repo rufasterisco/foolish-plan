@@ -31,7 +31,36 @@ function listKohSessions(): KohSession[] {
   }
 }
 
+function attachToSession(sessionName: string) {
+  const terminal = vscode.window.createTerminal({
+    name: sessionName,
+    shellPath: process.env.SHELL,
+    shellArgs: ["-c", `tmux attach-session -t "${sessionName}"`],
+    location: { viewColumn: vscode.ViewColumn.Active },
+  });
+  terminal.show();
+}
+
 export function activate(context: vscode.ExtensionContext) {
+  // Track known sessions to detect new ones
+  let knownSessions = new Set(listKohSessions().map((s) => s.name));
+
+  // Poll for new koh tmux sessions every 2 seconds
+  const watcher = setInterval(() => {
+    const current = listKohSessions();
+    for (const session of current) {
+      if (!knownSessions.has(session.name) && !session.attached) {
+        knownSessions.add(session.name);
+        attachToSession(session.name);
+      }
+    }
+    // Update known set (remove gone sessions)
+    knownSessions = new Set(current.map((s) => s.name));
+  }, 2000);
+
+  context.subscriptions.push({ dispose: () => clearInterval(watcher) });
+
+  // Manual attach command
   const attach = vscode.commands.registerCommand("koh.attach", async () => {
     const sessions = listKohSessions();
 
@@ -54,13 +83,7 @@ export function activate(context: vscode.ExtensionContext) {
       return;
     }
 
-    const terminal = vscode.window.createTerminal({
-      name: pick.label,
-      shellPath: "/bin/bash",
-      shellArgs: ["-c", `tmux attach-session -t "${pick.label}"`],
-    });
-
-    terminal.show();
+    attachToSession(pick.label);
   });
 
   context.subscriptions.push(attach);

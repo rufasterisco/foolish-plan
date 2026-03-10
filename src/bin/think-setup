@@ -1,6 +1,6 @@
 #!/bin/bash
 # think-setup: deterministic setup for a new koh issue.
-# Creates branch, worktree, and issue directory.
+# Creates branch, worktree, and issue directory with template.
 #
 # Usage: think-setup <slug>
 # Output: prints KOH_ID, KOH_SLUG, KOH_ID_SLUG, KOH_WORKTREE, KOH_ISSUE_DIR

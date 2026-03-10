@@ -15,20 +15,19 @@ Save the KEY=VALUE output — you'll need `KOH_ID_SLUG`, `KOH_WORKTREE`, and `KO
 
 ## Step 2: Fill in the template
 
-The setup script created `<KOH_ISSUE_DIR>/issue.md` from a template. If there has been prior conversation, read the template and fill in as much as possible from what was discussed.
+The setup script created `<KOH_ISSUE_DIR>/issue.md` from a template. Read it and fill in as much as possible from the conversation so far. Write everything you know — problem, solution ideas, context, constraints. Don't leave sections empty if you have relevant information.
 
-## Step 3: Seed the new session
+## Step 3: Launch the think session
 
+Run:
 ```
-cd <KOH_WORKTREE> && claude -p "<summary or user input>. You are in a koh /think session. Help the user plan this task. The issue template is at koh/issues/<KOH_ID_SLUG>/issue.md — read it, fill in all sections. When the plan is ready, the user will run /koh/explode to start coding." --output-format stream-json --verbose > <KOH_ISSUE_DIR>/.seed-output.jsonl
+.koh/bin/think-launch <KOH_ID_SLUG> <KOH_WORKTREE>
 ```
+
+This seeds a new claude session with the pre-filled template and launches it in tmux. The VS Code extension will auto-attach to the session.
 
 ## Step 4: Tell the user
 
-Tell the user the planning session is ready. To open it:
-
-  Cmd+Shift+P → "Run Task" → koh-think-<KOH_ID_SLUG>
-
-This opens a new terminal with claude in the worktree, with all context loaded.
-
-When the plan is done, run `/koh/explode <KOH_ID_SLUG>` to start coding.
+The think session is ready. A terminal should open automatically via the koh extension. If not:
+- Attach via VS Code: Cmd+Shift+P → "koh: Attach to session"
+- Or from any terminal: `tmux attach -t koh-<KOH_ID_SLUG>`

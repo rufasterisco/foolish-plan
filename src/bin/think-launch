@@ -1,0 +1,49 @@
+#!/bin/bash
+# think-launch: launch tmux with claude for a think session.
+# Called after think-setup and after the issue template has been filled in.
+#
+# Usage: think-launch <id-slug> <worktree-dir>
+
+set -euo pipefail
+
+SCRIPT_DIR="$(cd "$(dirname "$0")" && pwd)"
+LIB_DIR="$SCRIPT_DIR/../lib"
+
+source "$LIB_DIR/guards.sh"
+
+# --- Validate ---
+
+if [ -z "${1:-}" ] || [ -z "${2:-}" ]; then
+  echo "Usage: think-launch <id-slug> <worktree-dir>" >&2
+  exit 1
+fi
+
+id_slug="$1"
+worktree_dir="$2"
+
+assert_valid_id_slug "$id_slug"
+
+if [ ! -d "$worktree_dir" ]; then
+  echo "ERROR: worktree not found at $worktree_dir" >&2
+  exit 1
+fi
+
+issue_dir="$worktree_dir/koh/issues/$id_slug"
+
+if [ ! -f "$issue_dir/issue.md" ]; then
+  echo "ERROR: issue.md not found at $issue_dir/issue.md" >&2
+  exit 1
+fi
+
+# --- Check tmux session doesn't already exist ---
+
+if tmux has-session -t "koh-$id_slug" 2>/dev/null; then
+  echo "ERROR: tmux session 'koh-$id_slug' already exists" >&2
+  exit 1
+fi
+
+# --- Launch tmux session ---
+
+tmux new-session -d -s "koh-$id_slug" -c "$worktree_dir" "unset CLAUDECODE; claude; exec bash"
+
+echo "KOH_TMUX_SESSION=koh-$id_slug"
