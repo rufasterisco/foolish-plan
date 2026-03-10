@@ -48,10 +48,10 @@ Copy from the koh repo (fetched via curl or git clone) into the target repo:
 ### Step 5: install slash commands
 
 Claude Code slash commands live in `.claude/commands/`. Install:
-- `.claude/commands/think.md` — prompt that calls `koh/bin/think`
-- `.claude/commands/explode.md` — prompt that calls `koh/bin/explode`
+- `.claude/commands/think.md` — orchestration prompt for planning an issue
+- `.claude/commands/explode.md` — orchestration prompt for running a coding session
 
-**Open question:** slash commands are markdown prompts, not shell scripts. How do they invoke the shell scripts? Might need to be hooks or a different mechanism. Needs investigation.
+**Architecture:** slash commands are markdown prompts — they tell claude which shell scripts to run, in what order, and how to handle errors. Shell scripts do the deterministic work (create branch, copy files, extract recording, commit). Claude is the runtime that executes the slash commands — it's the smart glue between dumb, reliable scripts. This makes the scripts optimizable and testable, while the markdown layer can evolve to handle more complex orchestration (conditional steps, error recovery, etc.) without changing the scripts.
 
 ### Step 6: update .gitignore
 
@@ -65,7 +65,6 @@ Print what was set up and next steps.
 
 ## Open questions
 
-1. **Slash commands vs scripts** — Claude Code slash commands are markdown prompts, not executables. How do /think and /explode get triggered? Are they slash commands that tell claude to run a shell script? Or are they standalone scripts the user runs directly (not through claude)?
-2. **Script location** — do scripts live inside the target repo (committed) or in a global location? If committed, they're versioned with the project. If global, they're shared across projects.
-3. **Updates** — how does the user update koh? Re-run init? A separate `koh update` command?
-4. **koh/ in .gitignore?** — issue files and recordings should be committed (that's the point). But worktree paths shouldn't. Need to be precise about what gets ignored.
+1. **Script location** — do scripts live inside the target repo (committed) or in a global location? If committed, they're versioned with the project. If global, they're shared across projects.
+2. **Updates** — how does the user update koh? Re-run init? A separate `koh update` command?
+3. **koh/ in .gitignore?** — issue files and recordings should be committed (that's the point). But worktree paths shouldn't. Need to be precise about what gets ignored.
