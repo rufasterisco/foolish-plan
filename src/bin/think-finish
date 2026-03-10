@@ -1,0 +1,56 @@
+#!/bin/bash
+# think-finish: extract recording and commit after /think session.
+#
+# Usage: think-finish <id-slug> <worktree-path>
+
+set -euo pipefail
+
+SCRIPT_DIR="$(cd "$(dirname "$0")" && pwd)"
+LIB_DIR="$SCRIPT_DIR/../lib"
+
+source "$LIB_DIR/recording.sh"
+
+# --- Validate ---
+
+if [ -z "${1:-}" ] || [ -z "${2:-}" ]; then
+  echo "Usage: think-finish <id-slug> <worktree-path>" >&2
+  exit 1
+fi
+
+id_slug="$1"
+worktree="$2"
+issue_dir="$worktree/koh/issues/$id_slug"
+
+if [ ! -f "$issue_dir/issue.md" ]; then
+  echo "ERROR: issue.md not found at $issue_dir/issue.md" >&2
+  echo "Make sure you wrote the issue file before running think-finish." >&2
+  exit 1
+fi
+
+# --- Extract recording ---
+
+recording_dest="$issue_dir/think-recording.jsonl"
+
+# think runs interactively — we don't have a session ID, so grab the latest
+if extract_latest_recording "$worktree" "$recording_dest" 2>/dev/null; then
+  echo "Recording saved to $recording_dest"
+else
+  echo "WARNING: could not extract recording (session log not found). Continuing without it." >&2
+fi
+
+# --- Commit ---
+
+cd "$worktree"
+
+git add "koh/issues/$id_slug/issue.md"
+if [ -f "$recording_dest" ]; then
+  git add "koh/issues/$id_slug/think-recording.jsonl"
+fi
+
+git commit -m "$id_slug: plan issue"
+
+echo ""
+echo "=== /think complete ==="
+echo "Branch: $id_slug"
+echo "Issue: $issue_dir/issue.md"
+echo "Ready for: /explode $id_slug"

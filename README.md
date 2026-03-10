@@ -9,10 +9,10 @@ An organized way to record what happens in coding sessions with a coding agent. 
 
 ## Setup
 
-Run the init script in any repo:
+Run the install script in any repo:
 
 ```sh
-curl -fsSL https://raw.githubusercontent.com/rufasterisco/koh/master/init.sh | sh
+curl -fsSL https://raw.githubusercontent.com/rufasterisco/koh/master/install.sh | sh
 ```
 
 This copies scripts and slash commands into `.claude/koh/` inside the repo, and:

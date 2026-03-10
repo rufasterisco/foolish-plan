@@ -1,4 +1,4 @@
-# init script — implementation proposal
+# install script — implementation proposal
 
 ## What it is
 
@@ -8,7 +8,7 @@ A setup script that installs koh into a target repository. The user runs it once
 
 ```sh
 # from inside any git repo:
-curl -fsSL https://raw.githubusercontent.com/rufasterisco/koh/master/init.sh | sh
+curl -fsSL https://raw.githubusercontent.com/rufasterisco/koh/master/install.sh | sh
 ```
 
 ## What it does

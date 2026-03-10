@@ -1,0 +1,59 @@
+#!/bin/bash
+# koh-tmux: thin tmux wrapper for koh sessions.
+#
+# Usage:
+#   koh-tmux list                  show running koh sessions
+#   koh-tmux connect <id-slug>     attach to a session
+#   koh-tmux disconnect            detach from current session
+
+set -euo pipefail
+
+case "${1:-}" in
+  list)
+    sessions=$(tmux list-sessions -F '#{session_name} #{session_attached} #{session_created}' 2>/dev/null | grep '^koh-' || true)
+    if [ -z "$sessions" ]; then
+      echo "No koh sessions running."
+    else
+      echo "Running koh sessions:"
+      echo "$sessions" | while read -r name attached created; do
+        status="detached"
+        if [ "$attached" = "1" ]; then
+          status="attached"
+        fi
+        created_fmt=$(date -r "$created" '+%Y-%m-%d %H:%M' 2>/dev/null || echo "$created")
+        echo "  $name ($status, started $created_fmt)"
+      done
+    fi
+    ;;
+
+  connect)
+    if [ -z "${2:-}" ]; then
+      echo "Usage: koh-tmux connect <id-slug>" >&2
+      exit 1
+    fi
+    session="koh-$2"
+    if ! tmux has-session -t "$session" 2>/dev/null; then
+      echo "ERROR: no tmux session '$session'" >&2
+      echo "Run 'koh-tmux list' to see running sessions." >&2
+      exit 1
+    fi
+    tmux attach-session -t "$session"
+    ;;
+
+  disconnect)
+    tmux detach-client 2>/dev/null || {
+      echo "ERROR: not inside a tmux session" >&2
+      exit 1
+    }
+    ;;
+
+  *)
+    echo "Usage: koh-tmux {list|connect|disconnect} [args]" >&2
+    echo "" >&2
+    echo "Commands:" >&2
+    echo "  list                  Show running koh sessions" >&2
+    echo "  connect <id-slug>    Attach to a session" >&2
+    echo "  disconnect            Detach from current session (or use ctrl+b d)" >&2
+    exit 1
+    ;;
+esac

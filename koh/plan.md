@@ -7,7 +7,7 @@
 3. **/think** — plans an issue. Runs on the host, uses claude to write a structured issue file, captures the session recording, creates branch + worktree.
 4. **/explode (local)** — runs the coding session on the host. Launches claude interactively, pointed at an existing issue/branch from /think. Captures the session recording when done.
 5. **tmux wrapper** — session management: list, connect, disconnect.
-6. **init script** — `curl | sh` setup. Copies koh into a target repo, verifies requirements, installs slash commands.
+6. **install script** — `curl | sh` setup. Copies koh into a target repo, verifies requirements, installs slash commands.
 
 ## Dependencies
 
@@ -17,7 +17,7 @@ ID generation ← /think ← /explode (local)
           recording extraction
 
 tmux wrapper (independent)
-init script (independent, ships everything)
+install script (independent, ships everything)
 ```
 
 ## Later blocks

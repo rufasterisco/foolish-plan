@@ -1,0 +1,116 @@
+#!/bin/bash
+# explode: launch a coding session for a koh issue.
+# Seeds claude with the issue file via -p, then launches an interactive
+# session in tmux via --continue.
+#
+# Usage: explode <id-slug>
+
+set -euo pipefail
+
+SCRIPT_DIR="$(cd "$(dirname "$0")" && pwd)"
+LIB_DIR="$SCRIPT_DIR/../lib"
+
+source "$LIB_DIR/guards.sh"
+source "$LIB_DIR/recording.sh"
+
+# --- Validate ---
+
+assert_not_worktree
+
+if [ -z "${1:-}" ]; then
+  echo "Usage: explode <id-slug>" >&2
+  echo "Example: explode 4-add-auth" >&2
+  exit 1
+fi
+
+id_slug="$1"
+root=$(repo_root)
+worktree="$root/.koh-worktrees/$id_slug"
+issue_dir="$worktree/koh/issues/$id_slug"
+
+if [ ! -d "$worktree" ]; then
+  echo "ERROR: worktree not found at $worktree" >&2
+  echo "Did you run /think first?" >&2
+  exit 1
+fi
+
+if [ ! -f "$issue_dir/issue.md" ]; then
+  echo "ERROR: issue.md not found at $issue_dir/issue.md" >&2
+  echo "Did you run /think first?" >&2
+  exit 1
+fi
+
+# --- Check tmux session doesn't already exist ---
+
+if tmux has-session -t "koh-$id_slug" 2>/dev/null; then
+  echo "ERROR: tmux session 'koh-$id_slug' already exists" >&2
+  echo "Use: koh-tmux connect $id_slug" >&2
+  exit 1
+fi
+
+# --- Seed claude with -p ---
+
+echo "Seeding claude with issue file..."
+
+tmp_output=$(mktemp)
+trap "rm -f $tmp_output" EXIT
+
+cd "$worktree"
+
+claude -p "Read koh/issues/$id_slug/issue.md. This is the execution plan. Summarize what you're about to do, then wait for the user to confirm before starting." \
+  --output-format stream-json --verbose \
+  > "$tmp_output" 2>&1
+
+# Extract session ID
+session_id=$(jq -r '.session_id // empty' "$tmp_output" 2>/dev/null | head -1)
+
+if [ -z "$session_id" ]; then
+  echo "ERROR: could not extract session ID from claude output" >&2
+  echo "Claude output:" >&2
+  head -5 "$tmp_output" >&2
+  exit 1
+fi
+
+echo "Session ID: $session_id"
+
+# --- Create wrapper script for tmux ---
+# This script runs claude --resume, and after it exits, extracts the recording.
+
+wrapper=$(mktemp)
+cat > "$wrapper" << WRAPPER_EOF
+#!/bin/bash
+cd "$worktree"
+claude --resume "$session_id"
+
+# --- Post-session: extract recording and commit ---
+echo ""
+echo "=== Session ended. Extracting recording... ==="
+
+source "$LIB_DIR/recording.sh"
+
+if extract_recording "$session_id" "$worktree" "$issue_dir/explode-recording.jsonl" 2>/dev/null; then
+  echo "Recording saved."
+  cd "$worktree"
+  git add "koh/issues/$id_slug/explode-recording.jsonl"
+  git commit -m "$id_slug: add session recording" || true
+  echo "Recording committed."
+else
+  echo "WARNING: could not extract recording."
+fi
+
+echo ""
+echo "=== /explode complete ==="
+echo "Branch: $id_slug"
+echo ""
+echo "Press enter to close this tmux session."
+read
+WRAPPER_EOF
+chmod +x "$wrapper"
+
+# --- Launch tmux session ---
+
+tmux new-session -d -s "koh-$id_slug" -c "$worktree" "bash $wrapper; rm -f $wrapper"
+
+echo ""
+echo "=== tmux session created: koh-$id_slug ==="
+echo "Attach with: koh-tmux connect $id_slug"
