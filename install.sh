@@ -109,7 +109,7 @@ install_extension() {
 
 if [ -d ".koh/bin" ] && [ -d ".claude/commands/koh" ]; then
   echo "koh is already installed."
-  printf "Reinstall (updates tooling, keeps issues/worktrees)? [y/N] "
+  printf "Reinstall? [y/N] "
   read -r answer
   if [ "$answer" != "y" ] && [ "$answer" != "Y" ]; then
     echo "Aborted."
@@ -122,7 +122,8 @@ if [ -d ".koh/bin" ] && [ -d ".claude/commands/koh" ]; then
   echo ""
   echo "=== koh updated ==="
   echo ""
-  echo "Use /think to plan, /explode to code."
+  echo "Use /koh:think to plan, /koh:explode to code."
+  echo ""
   exit 0
 fi
 
@@ -165,5 +166,5 @@ echo ""
 echo "Commit the koh files:"
 echo "  git add .koh .claude/commands koh .gitignore"
 echo ""
-echo "Then use /think to plan an issue, /explode to start coding."
+echo "Then use /koh:think to plan, /koh:explode to code."
 echo ""
