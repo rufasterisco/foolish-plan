@@ -57,6 +57,15 @@ git worktree add "$worktree_dir" -b "$id_slug" >/dev/null 2>&1
 issue_dir="$worktree_dir/koh/issues/$id_slug"
 mkdir -p "$issue_dir"
 
+# --- Copy issue template ---
+
+template="$SCRIPT_DIR/../templates/issue.md"
+if [ -f "$template" ]; then
+  sed -e "s|<KOH_ID_SLUG>|$id_slug|g" \
+      -e "s|<KOH_WORKTREE>|$worktree_dir|g" \
+      "$template" > "$issue_dir/issue.md"
+fi
+
 # --- Output (parseable) ---
 
 echo "KOH_ID=$id"

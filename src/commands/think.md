@@ -20,13 +20,7 @@ If `/think` is the first thing the user said, just use their input directly.
 
 ## Step 2: Seed the new session
 
-Once setup completes, copy the issue template into the issue directory and fill in as much as possible from the conversation so far:
-
-```
-cp .koh/templates/issue.md <KOH_ISSUE_DIR>/issue.md
-```
-
-Then `cd` into the worktree and seed a new claude session:
+Once setup completes (it also copies the issue template into the issue directory), `cd` into the worktree and seed a new claude session:
 
 ```
 cd <KOH_WORKTREE> && claude -p "<summary or user input>. You are in a koh /think session. Help the user plan this task. The issue template is at koh/issues/<KOH_ID_SLUG>/issue.md — read it, fill in all sections. When the plan is ready, the user will run /koh/explode to start coding." --output-format stream-json --verbose > /tmp/koh-seed-<KOH_ID_SLUG>.jsonl
