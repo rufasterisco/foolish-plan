@@ -76,6 +76,7 @@ install_tooling() {
   cp "$KOH_SRC/bin/think-launch" .koh/bin/think-launch
   cp "$KOH_SRC/bin/think-finish" .koh/bin/think-finish
   cp "$KOH_SRC/bin/explode"      .koh/bin/explode
+  cp "$KOH_SRC/bin/cleanup"      .koh/bin/cleanup
 
   chmod +x .koh/bin/*
 
@@ -88,6 +89,7 @@ install_tooling() {
 
   cp "$KOH_SRC/commands/think.md"    .claude/commands/koh/think.md
   cp "$KOH_SRC/commands/explode.md"  .claude/commands/koh/explode.md
+  cp "$KOH_SRC/commands/cleanup.md" .claude/commands/koh/cleanup.md
 
   # --- Update .gitignore ---
 
