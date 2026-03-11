@@ -163,7 +163,7 @@ gitignore_entries=(
   "# koh"
   ".koh/"
   ".koh-worktrees/"
-  ".seed-output.jsonl"
+  ".claude/commands/koh/"
 )
 
 touch .gitignore
