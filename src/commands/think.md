@@ -1,10 +1,10 @@
 # /think — Plan a new koh issue
 
-You are helping the user start a new planning session. Follow these steps in order.
+You are helping the user start a new planning session. Follow these steps in order. Execute each step immediately — do not stop to ask for confirmation, discuss the slug, or reason out loud. Just run the commands and move on. Only stop if a command errors.
 
 ## Step 1: Setup
 
-Generate a short slug from what the user said or from the conversation so far. Lowercase, hyphens, as short as possible while still clear (e.g. `add-auth`, `fix-login`, `refactor-db`).
+Generate a short slug from what the user said or from the conversation so far. Lowercase, hyphens, as short as possible while still clear (e.g. `add-auth`, `fix-login`, `refactor-db`). Do not ask the user to confirm the slug — just pick one and go.
 
 Run:
 ```
@@ -19,7 +19,7 @@ The setup script created `<KOH_ISSUE_DIR>/issue.md` from a template. Read it and
 
 ## Step 3: Launch the think session
 
-Run:
+Run immediately — do not ask "shall I launch?" or wait for confirmation:
 ```
 .koh/bin/think-launch <KOH_ID_SLUG> <KOH_WORKTREE>
 ```
