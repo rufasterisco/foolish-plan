@@ -13,6 +13,7 @@ LIB_DIR="$SCRIPT_DIR/../lib"
 
 source "$LIB_DIR/guards.sh"
 source "$LIB_DIR/id.sh"
+source "$LIB_DIR/state.sh"
 
 # --- Validate ---
 
@@ -86,6 +87,10 @@ if [ -f "$template" ]; then
       -e "s|<KOH_WORKTREE>|$worktree_dir|g" \
       "$template" > "$issue_dir/issue.md"
 fi
+
+# --- Set initial lifecycle state ---
+
+set_state "$issue_dir" thinking
 
 # --- Output (parseable) ---
 
