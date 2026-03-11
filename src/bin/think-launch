@@ -37,14 +37,16 @@ fi
 
 # --- Check tmux session doesn't already exist ---
 
-if tmux has-session -t "koh-$id_slug" 2>/dev/null; then
-  echo "ERROR: tmux session 'koh-$id_slug' already exists" >&2
+session_name="koh-think-$id_slug"
+
+if tmux has-session -t "$session_name" 2>/dev/null; then
+  echo "ERROR: tmux session '$session_name' already exists" >&2
   exit 1
 fi
 
 # --- Launch tmux session ---
 
-tmux new-session -d -s "koh-$id_slug" -c "$worktree_dir" \
+tmux new-session -d -s "$session_name" -c "$worktree_dir" \
   "unset CLAUDECODE; claude --append-system-prompt-file koh/issues/$id_slug/issue.md; exec bash"
 
-echo "KOH_TMUX_SESSION=koh-$id_slug"
+echo "KOH_TMUX_SESSION=$session_name"

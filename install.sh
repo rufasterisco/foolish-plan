@@ -139,6 +139,7 @@ mkdir -p koh/issues
 
 gitignore_entries=(
   "# koh"
+  ".koh/"
   ".koh-worktrees/"
   ".seed-output.jsonl"
 )

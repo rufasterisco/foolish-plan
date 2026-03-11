@@ -7,7 +7,7 @@
 encode_project_dir() {
   local abs_dir
   abs_dir=$(cd "$1" && pwd)
-  echo "$abs_dir" | tr '/' '-'
+  echo "$abs_dir" | tr '/.' '--'
 }
 
 # Get the session log directory for a working directory.
@@ -30,7 +30,6 @@ scrub_recording() {
 
   local report
   report=$(mktemp)
-  trap 'rm -f "$report"' RETURN
 
   # Scan the file for secrets (exit code 1 = secrets found, not an error)
   gitleaks detect --source "$file" --report-format json --report-path "$report" --no-git 2>/dev/null || true
@@ -40,6 +39,7 @@ scrub_recording() {
   count=$(jq 'length' "$report" 2>/dev/null || echo "0")
 
   if [ "$count" -eq 0 ]; then
+    rm -f "$report"
     return 0
   fi
 
@@ -61,6 +61,7 @@ scrub_recording() {
   done <<< "$secrets"
 
   mv "$tmp" "$file"
+  rm -f "$report"
   echo "Secrets scrubbed."
 }
 
@@ -74,6 +75,31 @@ snapshot_recordings() {
   dir=$(session_log_dir "$working_dir")
 
   ls "$dir"/*.jsonl 2>/dev/null | sort > "$snapshot_file"
+}
+
+# Extract all recordings for a working directory.
+# Concatenates all .jsonl files into dest, then scrubs.
+extract_all_recordings() {
+  local working_dir="$1"
+  local dest="$2"
+
+  local dir
+  dir=$(session_log_dir "$working_dir")
+
+  local files
+  files=$(ls "$dir"/*.jsonl 2>/dev/null | sort)
+
+  if [ -z "$files" ]; then
+    echo "No session logs found." >&2
+    return 1
+  fi
+
+  > "$dest"
+  while IFS= read -r f; do
+    cat "$f" >> "$dest"
+  done <<< "$files"
+
+  scrub_recording "$dest"
 }
 
 # Extract recordings that are new since a snapshot.

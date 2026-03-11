@@ -52,6 +52,13 @@ worktree_dir="$root/.koh-worktrees/$id_slug"
 
 git worktree add "$worktree_dir" -b "$id_slug" >/dev/null 2>&1
 
+# --- Copy tooling into worktree ---
+
+koh_dir="$root/.koh"
+if [ -d "$koh_dir" ]; then
+  cp -R "$koh_dir" "$worktree_dir/.koh"
+fi
+
 # --- Create issue directory ---
 
 issue_dir="$worktree_dir/koh/issues/$id_slug"

@@ -40,17 +40,9 @@ if [ ! -f "$issue_dir/issue.md" ]; then
   exit 1
 fi
 
-# --- Snapshot existing session logs ---
+# --- Extract think recording (all existing session logs) ---
 
-snapshot=$(mktemp)
-trap 'rm -f "$snapshot"' EXIT
-
-snapshot_recordings "$root" "$snapshot"
-
-# --- Extract think recording ---
-
-echo "Extracting think recording..."
-if extract_new_recordings "$root" "$snapshot" "$issue_dir/think-recording.jsonl"; then
+if extract_all_recordings "$root" "$issue_dir/think-recording.jsonl"; then
   echo "Think recording saved."
   cd "$root"
   git add "koh/issues/$id_slug/think-recording.jsonl"
@@ -59,22 +51,34 @@ else
   echo "WARNING: could not extract think recording (continuing anyway)."
 fi
 
-# --- Snapshot again (after think extraction, before explode) ---
+# --- Snapshot (baseline for explode — everything before this point is think) ---
 
+snapshot=$(mktemp)
 snapshot_recordings "$root" "$snapshot"
 
 # --- Check tmux session doesn't already exist ---
 
-if tmux has-session -t "koh-$id_slug" 2>/dev/null; then
-  echo "ERROR: tmux session 'koh-$id_slug' already exists" >&2
-  echo "Use: tmux attach -t koh-$id_slug" >&2
+session_name="koh-explode-$id_slug"
+
+if tmux has-session -t "$session_name" 2>/dev/null; then
+  echo "ERROR: tmux session '$session_name' already exists" >&2
+  echo "Use: tmux attach -t $session_name" >&2
   exit 1
 fi
 
 # --- Create wrapper script for tmux ---
 
 wrapper=$(mktemp)
-cat > "$wrapper" << 'WRAPPER_EOF'
+
+# Write variables as quoted assignments (safe against special chars in paths)
+{
+  printf 'KOH_ROOT=%q\n' "$root"
+  printf 'KOH_LIB_DIR=%q\n' "$LIB_DIR"
+  printf 'KOH_ISSUE_DIR=%q\n' "$issue_dir"
+  printf 'KOH_ID_SLUG=%q\n' "$id_slug"
+  printf 'KOH_SNAPSHOT=%q\n' "$snapshot"
+
+  cat << 'WRAPPER_EOF'
 #!/bin/bash
 unset CLAUDECODE
 cd "$KOH_ROOT"
@@ -96,6 +100,8 @@ else
   echo "WARNING: could not extract recording."
 fi
 
+rm -f "$KOH_SNAPSHOT"
+
 echo ""
 echo "=== /explode complete ==="
 echo "Branch: $KOH_ID_SLUG"
@@ -103,18 +109,13 @@ echo ""
 echo "Press enter to close this tmux session."
 read
 WRAPPER_EOF
+} > "$wrapper"
 chmod +x "$wrapper"
 
 # --- Launch tmux session ---
 
-export KOH_ROOT="$root"
-export KOH_LIB_DIR="$LIB_DIR"
-export KOH_ISSUE_DIR="$issue_dir"
-export KOH_ID_SLUG="$id_slug"
-export KOH_SNAPSHOT="$snapshot"
-
-tmux new-session -d -s "koh-$id_slug" -c "$root" "bash $wrapper; rm -f $wrapper"
+tmux new-session -d -s "$session_name" -c "$root" "bash $wrapper; rm -f $wrapper"
 
 echo ""
-echo "=== tmux session created: koh-$id_slug ==="
-echo "Attach with: tmux attach -t koh-$id_slug"
+echo "=== tmux session created: $session_name ==="
+echo "Attach with: tmux attach -t $session_name"
