@@ -32,7 +32,7 @@ scrub_recording() {
   report=$(mktemp)
 
   # Scan the file for secrets (exit code 1 = secrets found, not an error)
-  gitleaks detect --source "$file" --report-format json --report-path "$report" --no-git 2>/dev/null || true
+  gitleaks detect --source "$file" --report-format json --report-path "$report" --no-git --max-decode-depth 3 2>/dev/null || true
 
   # Check if any secrets were found
   local count
@@ -74,7 +74,11 @@ snapshot_recordings() {
   local dir
   dir=$(session_log_dir "$working_dir")
 
-  ls "$dir"/*.jsonl 2>/dev/null | sort > "$snapshot_file"
+  local files=()
+  for f in "$dir"/*.jsonl; do
+    [ -e "$f" ] && files+=("$f")
+  done
+  printf '%s\n' "${files[@]}" | sort > "$snapshot_file"
 }
 
 # Extract all recordings for a working directory.
@@ -86,18 +90,22 @@ extract_all_recordings() {
   local dir
   dir=$(session_log_dir "$working_dir")
 
-  local files
-  files=$(ls "$dir"/*.jsonl 2>/dev/null | sort)
+  local files=()
+  for f in "$dir"/*.jsonl; do
+    [ -e "$f" ] && files+=("$f")
+  done
 
-  if [ -z "$files" ]; then
+  if [ ${#files[@]} -eq 0 ]; then
     echo "No session logs found." >&2
     return 1
   fi
 
   > "$dest"
+  local sorted
+  sorted=$(printf '%s\n' "${files[@]}" | sort)
   while IFS= read -r f; do
     cat "$f" >> "$dest"
-  done <<< "$files"
+  done <<< "$sorted"
 
   if ! scrub_recording "$dest"; then
     rm -f "$dest"
@@ -117,7 +125,11 @@ extract_new_recordings() {
 
   local current
   current=$(mktemp)
-  ls "$dir"/*.jsonl 2>/dev/null | sort > "$current"
+  local cur_files=()
+  for f in "$dir"/*.jsonl; do
+    [ -e "$f" ] && cur_files+=("$f")
+  done
+  printf '%s\n' "${cur_files[@]}" | sort > "$current"
 
   # Diff: files in current but not in snapshot
   local new_files

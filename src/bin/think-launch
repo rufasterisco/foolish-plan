@@ -48,7 +48,8 @@ fi
 
 prompt_template="$SCRIPT_DIR/../prompts/think-launch.md"
 prompt=$(mktemp)
-sed "s|<KOH_ISSUE_FILE>|$issue_dir/issue.md|g" "$prompt_template" > "$prompt"
+# Use awk for literal string replacement (safe against regex special chars in paths)
+awk -v r="$issue_dir/issue.md" '{gsub(/<KOH_ISSUE_FILE>/, r)}1' "$prompt_template" > "$prompt"
 
 # --- Launch tmux session ---
 
