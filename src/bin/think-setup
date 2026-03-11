@@ -1,0 +1,90 @@
+#!/bin/bash
+# think-setup: deterministic setup for a new koh issue.
+# Creates branch, worktree, and issue directory with template.
+#
+# Usage: think-setup <slug>
+# Output: prints KOH_ID, KOH_SLUG, KOH_ID_SLUG, KOH_WORKTREE, KOH_ISSUE_DIR
+#         as KEY=VALUE lines (parseable by eval).
+
+set -euo pipefail
+
+SCRIPT_DIR="$(cd "$(dirname "$0")" && pwd)"
+LIB_DIR="$SCRIPT_DIR/../lib"
+
+source "$LIB_DIR/guards.sh"
+source "$LIB_DIR/id.sh"
+
+# --- Validate ---
+
+assert_not_worktree
+
+if [ -z "${1:-}" ]; then
+  echo "Usage: think-setup <slug>" >&2
+  echo "Example: think-setup add-auth" >&2
+  exit 1
+fi
+
+# --- Sanitize slug ---
+
+slug=$(echo "$1" | tr '[:upper:]' '[:lower:]' | sed 's/[^a-z0-9-]/-/g' | sed 's/--*/-/g' | sed 's/^-//;s/-$//')
+
+if [ -z "$slug" ]; then
+  echo "ERROR: slug is empty after sanitization" >&2
+  exit 1
+fi
+
+# --- Generate ID ---
+
+id=$(next_id)
+id_slug="${id}-${slug}"
+
+# --- Check branch doesn't already exist ---
+
+if git show-ref --verify --quiet "refs/heads/$id_slug" 2>/dev/null; then
+  echo "ERROR: branch '$id_slug' already exists" >&2
+  exit 1
+fi
+
+# --- Create worktree ---
+
+root=$(repo_root)
+worktree_dir="$root/.koh-worktrees/$id_slug"
+
+git worktree add "$worktree_dir" -b "$id_slug" >/dev/null 2>&1
+
+# --- Copy tooling into worktree ---
+
+koh_dir="$root/.koh"
+if [ -d "$koh_dir" ]; then
+  cp -R "$koh_dir" "$worktree_dir/.koh"
+fi
+
+# --- Copy Claude settings into worktree ---
+
+settings="$SCRIPT_DIR/../settings/worktree-settings.json"
+if [ -f "$settings" ]; then
+  mkdir -p "$worktree_dir/.claude"
+  cp "$settings" "$worktree_dir/.claude/settings.local.json"
+fi
+
+# --- Create issue directory ---
+
+issue_dir="$worktree_dir/koh/issues/$id_slug"
+mkdir -p "$issue_dir"
+
+# --- Copy issue template ---
+
+template="$SCRIPT_DIR/../templates/issue.md"
+if [ -f "$template" ]; then
+  sed -e "s|<KOH_ID_SLUG>|$id_slug|g" \
+      -e "s|<KOH_WORKTREE>|$worktree_dir|g" \
+      "$template" > "$issue_dir/issue.md"
+fi
+
+# --- Output (parseable) ---
+
+echo "KOH_ID=$id"
+echo "KOH_SLUG=$slug"
+echo "KOH_ID_SLUG=$id_slug"
+echo "KOH_WORKTREE=$worktree_dir"
+echo "KOH_ISSUE_DIR=$issue_dir"

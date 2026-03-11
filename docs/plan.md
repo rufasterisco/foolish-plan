@@ -7,7 +7,7 @@
 3. **/think** — plans an issue. Runs on the host, uses claude to write a structured issue file, captures the session recording, creates branch + worktree.
 4. **/explode (local)** — runs the coding session on the host. Launches claude interactively, pointed at an existing issue/branch from /think. Captures the session recording when done.
 5. **tmux wrapper** — session management: list, connect, disconnect.
-6. **init script** — `curl | sh` setup. Copies koh into a target repo, verifies requirements, installs slash commands.
+6. **install script** — `curl | sh` setup. Copies koh into a target repo, verifies requirements, installs slash commands.
 
 ## Dependencies
 
@@ -17,7 +17,7 @@ ID generation ← /think ← /explode (local)
           recording extraction
 
 tmux wrapper (independent)
-init script (independent, ships everything)
+install script (independent, ships everything)
 ```
 
 ## Later blocks
@@ -27,3 +27,6 @@ init script (independent, ships everything)
 - **/explode (YOLOS)** — autonomous coding in a jailed container. Depends on dev container + execution contexts.
 - **Local Docker registry** — pull-only access from container. Plugs into dev container.
 - **Credential proxy** — controlled way to pass creds into the jail. Plugs into execution contexts.
+- **VS Code extension** — spawn terminals automatically for /connect and /think sessions.
+- **/think resume** — resume an existing think session by issue id-slug. Reopens the session in the worktree with previous context.
+- **/think discard** — abandon a think session. Delete branch, worktree, clean up.
