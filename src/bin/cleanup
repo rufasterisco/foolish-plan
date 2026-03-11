@@ -1,0 +1,100 @@
+#!/bin/bash
+# cleanup: remove worktrees and tmux sessions for branches merged into dev.
+# Must run from the main repo (not a worktree).
+#
+# 1. Pulls dev from origin
+# 2. Scans .koh-worktrees/ for merged branches
+# 3. Kills tmux sessions and removes worktrees
+#
+# Usage: run from the main repo root (no arguments needed)
+
+set -euo pipefail
+
+SCRIPT_DIR="$(cd "$(dirname "$0")" && pwd)"
+LIB_DIR="$SCRIPT_DIR/../lib"
+
+source "$LIB_DIR/guards.sh"
+
+# --- Validate ---
+
+assert_not_worktree
+
+root=$(repo_root)
+cd "$root"
+
+worktrees_dir="$root/.koh-worktrees"
+
+if [ ! -d "$worktrees_dir" ]; then
+  echo "No .koh-worktrees/ directory found. Nothing to clean up."
+  exit 0
+fi
+
+# --- Pull dev from origin ---
+
+echo "Pulling dev from origin..."
+git pull origin dev
+echo ""
+
+# --- Get list of branches merged into dev ---
+
+merged_branches=$(git branch --merged dev --format='%(refname:short)')
+
+# --- Scan worktrees ---
+
+cleaned=()
+skipped=()
+
+for wt_dir in "$worktrees_dir"/*/; do
+  [ -d "$wt_dir" ] || continue
+
+  # Get branch name from the worktree
+  branch=$(git -C "$wt_dir" rev-parse --abbrev-ref HEAD 2>/dev/null) || continue
+
+  # Check if branch is merged into dev
+  if ! echo "$merged_branches" | grep -qx "$branch"; then
+    continue
+  fi
+
+  # Check for uncommitted changes
+  if [ -n "$(git -C "$wt_dir" status --porcelain 2>/dev/null)" ]; then
+    echo "WARNING: skipping $branch — worktree has uncommitted changes"
+    skipped+=("$branch")
+    continue
+  fi
+
+  echo "Cleaning up: $branch"
+
+  # Kill tmux sessions (ignore errors if they don't exist)
+  tmux kill-session -t "koh-think-$branch" 2>/dev/null || true
+  tmux kill-session -t "koh-explode-$branch" 2>/dev/null || true
+
+  # Remove the worktree
+  git worktree remove "$wt_dir" 2>/dev/null || {
+    echo "  WARNING: could not remove worktree at $wt_dir"
+    skipped+=("$branch")
+    continue
+  }
+
+  cleaned+=("$branch")
+  echo "  Removed worktree and killed tmux sessions."
+done
+
+# --- Summary ---
+
+echo ""
+if [ ${#cleaned[@]} -eq 0 ]; then
+  echo "Nothing to clean up."
+else
+  echo "Cleaned up ${#cleaned[@]} worktree(s):"
+  for b in "${cleaned[@]}"; do
+    echo "  - $b"
+  done
+fi
+
+if [ ${#skipped[@]} -gt 0 ]; then
+  echo ""
+  echo "Skipped ${#skipped[@]} worktree(s):"
+  for b in "${skipped[@]}"; do
+    echo "  - $b"
+  done
+fi
