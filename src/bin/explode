@@ -15,6 +15,7 @@ LIB_DIR="$SCRIPT_DIR/../lib"
 
 source "$LIB_DIR/guards.sh"
 source "$LIB_DIR/recording.sh"
+source "$LIB_DIR/state.sh"
 
 # --- Validate ---
 
@@ -84,6 +85,7 @@ wrapper=$(mktemp)
   printf 'KOH_ID_SLUG=%q\n' "$id_slug"
   printf 'KOH_SNAPSHOT=%q\n' "$snapshot"
   printf 'KOH_PROMPT=%q\n' "$root/.koh/prompts/explode.md"
+  printf 'KOH_STATE_LIB=%q\n' "$LIB_DIR/state.sh"
 
   cat << 'WRAPPER_EOF'
 #!/bin/bash
@@ -96,6 +98,7 @@ echo ""
 echo "=== Session ended. Extracting recording... ==="
 
 source "$KOH_LIB_DIR/recording.sh"
+source "$KOH_STATE_LIB"
 
 if extract_new_recordings "$KOH_ROOT" "$KOH_SNAPSHOT" "$KOH_ISSUE_DIR/explode-recording.jsonl"; then
   echo "Recording saved."
@@ -115,6 +118,9 @@ fi
 
 rm -f "$KOH_SNAPSHOT"
 
+# --- Set lifecycle state to done ---
+set_state "$KOH_ISSUE_DIR" done
+
 echo ""
 echo "=== /explode complete ==="
 echo "Branch: $KOH_ID_SLUG"
@@ -124,6 +130,10 @@ read -r
 WRAPPER_EOF
 } > "$wrapper"
 chmod +x "$wrapper"
+
+# --- Set lifecycle state to executing ---
+
+set_state "$issue_dir" executing
 
 # --- Launch tmux session ---
 
