@@ -99,7 +99,10 @@ extract_all_recordings() {
     cat "$f" >> "$dest"
   done <<< "$files"
 
-  scrub_recording "$dest"
+  if ! scrub_recording "$dest"; then
+    rm -f "$dest"
+    return 1
+  fi
 }
 
 # Extract recordings that are new since a snapshot.
@@ -132,5 +135,8 @@ extract_new_recordings() {
     cat "$f" >> "$dest"
   done <<< "$new_files"
 
-  scrub_recording "$dest"
+  if ! scrub_recording "$dest"; then
+    rm -f "$dest"
+    return 1
+  fi
 }

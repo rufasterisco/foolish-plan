@@ -67,7 +67,7 @@ fi
 # Never touches user content (koh/issues/, worktrees, branches).
 
 install_tooling() {
-  mkdir -p .koh/bin .koh/lib .koh/templates
+  mkdir -p .koh/bin .koh/lib .koh/templates .koh/prompts .koh/settings
 
   cp "$KOH_SRC/lib/guards.sh"    .koh/lib/guards.sh
   cp "$KOH_SRC/lib/id.sh"        .koh/lib/id.sh
@@ -80,11 +80,33 @@ install_tooling() {
   chmod +x .koh/bin/*
 
   cp "$KOH_SRC/templates/issue.md" .koh/templates/issue.md
+  cp "$KOH_SRC/prompts/think-launch.md" .koh/prompts/think-launch.md
+  cp "$KOH_SRC/prompts/explode.md"      .koh/prompts/explode.md
+  cp "$KOH_SRC/settings/worktree-settings.json" .koh/settings/worktree-settings.json
 
   mkdir -p .claude/commands/koh
 
   cp "$KOH_SRC/commands/think.md"    .claude/commands/koh/think.md
   cp "$KOH_SRC/commands/explode.md"  .claude/commands/koh/explode.md
+
+  # --- Merge koh allow rules into .claude/settings.local.json ---
+
+  local settings=".claude/settings.local.json"
+  local koh_rules='["Bash(.koh/bin/*)", "Edit(.koh-worktrees/**)"]'
+
+  if [ -f "$settings" ]; then
+    # Merge: add koh rules that aren't already present
+    local updated
+    updated=$(jq --argjson rules "$koh_rules" '
+      .permissions.allow = ((.permissions.allow // []) + $rules | unique)
+    ' "$settings")
+    echo "$updated" > "$settings"
+  else
+    # Create with just the koh rules
+    jq -n --argjson rules "$koh_rules" '
+      {permissions: {allow: $rules}}
+    ' > "$settings"
+  fi
 }
 
 # --- Install VS Code extension ---
@@ -109,7 +131,7 @@ install_extension() {
 
 if [ -d ".koh/bin" ] && [ -d ".claude/commands/koh" ]; then
   echo "koh is already installed."
-  printf "\033[31mReinstall?\033[0m [y/N] "
+  printf "\033[31mUpdate?\033[0m [y/N] "
   read -r answer
   if [ "$answer" != "y" ] && [ "$answer" != "Y" ]; then
     echo "Aborted."

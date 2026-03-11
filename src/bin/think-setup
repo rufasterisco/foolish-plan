@@ -59,6 +59,14 @@ if [ -d "$koh_dir" ]; then
   cp -R "$koh_dir" "$worktree_dir/.koh"
 fi
 
+# --- Copy Claude settings into worktree ---
+
+settings="$SCRIPT_DIR/../settings/worktree-settings.json"
+if [ -f "$settings" ]; then
+  mkdir -p "$worktree_dir/.claude"
+  cp "$settings" "$worktree_dir/.claude/settings.local.json"
+fi
+
 # --- Create issue directory ---
 
 issue_dir="$worktree_dir/koh/issues/$id_slug"

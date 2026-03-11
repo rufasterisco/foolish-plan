@@ -44,9 +44,15 @@ if tmux has-session -t "$session_name" 2>/dev/null; then
   exit 1
 fi
 
+# --- Prepare system prompt ---
+
+prompt_template="$SCRIPT_DIR/../prompts/think-launch.md"
+prompt=$(mktemp)
+sed "s|<KOH_ISSUE_FILE>|$issue_dir/issue.md|g" "$prompt_template" > "$prompt"
+
 # --- Launch tmux session ---
 
 tmux new-session -d -s "$session_name" -c "$worktree_dir" \
-  "unset CLAUDECODE; claude --append-system-prompt-file koh/issues/$id_slug/issue.md; exec bash"
+  "unset CLAUDECODE; claude --append-system-prompt-file koh/issues/$id_slug/issue.md --append-system-prompt-file $prompt; exec bash"
 
 echo "KOH_TMUX_SESSION=$session_name"

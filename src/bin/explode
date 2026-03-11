@@ -77,12 +77,13 @@ wrapper=$(mktemp)
   printf 'KOH_ISSUE_DIR=%q\n' "$issue_dir"
   printf 'KOH_ID_SLUG=%q\n' "$id_slug"
   printf 'KOH_SNAPSHOT=%q\n' "$snapshot"
+  printf 'KOH_PROMPT=%q\n' "$root/.koh/prompts/explode.md"
 
   cat << 'WRAPPER_EOF'
 #!/bin/bash
 unset CLAUDECODE
 cd "$KOH_ROOT"
-claude --append-system-prompt-file "koh/issues/$KOH_ID_SLUG/issue.md"
+claude --append-system-prompt-file "koh/issues/$KOH_ID_SLUG/issue.md" --append-system-prompt-file "$KOH_PROMPT"
 
 # --- Post-session: extract recording and commit ---
 echo ""

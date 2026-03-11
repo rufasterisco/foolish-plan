@@ -15,7 +15,7 @@ Save the KEY=VALUE output — you'll need `KOH_ID_SLUG`, `KOH_WORKTREE`, and `KO
 
 ## Step 2: Fill in the template
 
-The setup script created `<KOH_ISSUE_DIR>/issue.md` from a template. Read it and fill in as much as possible from the conversation so far. Write everything you know — problem, solution ideas, context, constraints. Don't leave sections empty if you have relevant information.
+The setup script created `<KOH_ISSUE_DIR>/issue.md` from a template. Read it and fill what you can from the conversation so far. Write everything you know — problem, solution ideas, context, constraints. Don't leave sections empty if you have relevant information. Don't add things that have not been discussed with the user.
 
 ## Step 3: Launch the think session
 
