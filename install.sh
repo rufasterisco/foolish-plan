@@ -89,6 +89,22 @@ install_tooling() {
   cp "$KOH_SRC/commands/think.md"    .claude/commands/koh/think.md
   cp "$KOH_SRC/commands/explode.md"  .claude/commands/koh/explode.md
 
+  # --- Update .gitignore ---
+
+  local gitignore_entries=(
+    "# koh"
+    ".koh/"
+    ".koh-worktrees/"
+    ".claude/commands/koh/"
+  )
+
+  touch .gitignore
+  for entry in "${gitignore_entries[@]}"; do
+    if ! grep -qF "$entry" .gitignore; then
+      echo "$entry" >> .gitignore
+    fi
+  done
+
   # --- Merge koh allow rules into .claude/settings.local.json ---
 
   local settings=".claude/settings.local.json"
@@ -157,21 +173,6 @@ echo "Installing koh..."
 install_tooling
 mkdir -p koh/issues
 
-# --- Update .gitignore ---
-
-gitignore_entries=(
-  "# koh"
-  ".koh/"
-  ".koh-worktrees/"
-  ".claude/commands/koh/"
-)
-
-touch .gitignore
-for entry in "${gitignore_entries[@]}"; do
-  if ! grep -qF "$entry" .gitignore; then
-    echo "$entry" >> .gitignore
-  fi
-done
 
 # --- VS Code extension (optional) ---
 
