@@ -59,12 +59,18 @@ if [ -d "$koh_dir" ]; then
   cp -R "$koh_dir" "$worktree_dir/.koh"
 fi
 
-# --- Copy Claude settings into worktree ---
+# --- Copy Claude settings and commands into worktree ---
+
+mkdir -p "$worktree_dir/.claude/commands/koh"
 
 settings="$SCRIPT_DIR/../settings/worktree-settings.json"
 if [ -f "$settings" ]; then
-  mkdir -p "$worktree_dir/.claude"
   cp "$settings" "$worktree_dir/.claude/settings.local.json"
+fi
+
+explode_cmd="$root/.claude/commands/koh/explode.md"
+if [ -f "$explode_cmd" ]; then
+  cp "$explode_cmd" "$worktree_dir/.claude/commands/koh/explode.md"
 fi
 
 # --- Create issue directory ---
