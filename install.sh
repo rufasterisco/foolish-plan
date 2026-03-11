@@ -69,13 +69,12 @@ fi
 install_tooling() {
   mkdir -p .koh/bin .koh/lib .koh/templates .koh/prompts .koh/settings
 
-  cp "$KOH_SRC/lib/guards.sh"    .koh/lib/guards.sh
-  cp "$KOH_SRC/lib/id.sh"        .koh/lib/id.sh
-  cp "$KOH_SRC/lib/recording.sh" .koh/lib/recording.sh
-  cp "$KOH_SRC/bin/think-setup"  .koh/bin/think-setup
-  cp "$KOH_SRC/bin/think-launch" .koh/bin/think-launch
-  cp "$KOH_SRC/bin/think-finish" .koh/bin/think-finish
-  cp "$KOH_SRC/bin/explode"      .koh/bin/explode
+  for f in "$KOH_SRC"/lib/*; do
+    cp "$f" ".koh/lib/$(basename "$f")"
+  done
+  for f in "$KOH_SRC"/bin/*; do
+    cp "$f" ".koh/bin/$(basename "$f")"
+  done
 
   chmod +x .koh/bin/*
 

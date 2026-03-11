@@ -44,9 +44,15 @@ fi
 
 if extract_all_recordings "$root" "$issue_dir/think-recording.jsonl"; then
   echo "Think recording saved."
-  cd "$root"
-  git add "koh/issues/$id_slug/think-recording.jsonl"
-  git commit -m "$id_slug: add think recording" || true
+  printf "Commit think recording? [y/N] "
+  read -r answer
+  if [ "$answer" = "y" ] || [ "$answer" = "Y" ]; then
+    cd "$root"
+    git add "koh/issues/$id_slug/think-recording.jsonl"
+    git commit -m "$id_slug: add think recording" || true
+  else
+    echo "Skipped commit."
+  fi
 else
   echo "WARNING: could not extract think recording (continuing anyway)."
 fi
@@ -93,10 +99,16 @@ source "$KOH_LIB_DIR/recording.sh"
 
 if extract_new_recordings "$KOH_ROOT" "$KOH_SNAPSHOT" "$KOH_ISSUE_DIR/explode-recording.jsonl"; then
   echo "Recording saved."
-  cd "$KOH_ROOT"
-  git add "koh/issues/$KOH_ID_SLUG/explode-recording.jsonl"
-  git commit -m "$KOH_ID_SLUG: add explode recording" || true
-  echo "Recording committed."
+  printf "Commit explode recording? [y/N] "
+  read -r answer
+  if [ "$answer" = "y" ] || [ "$answer" = "Y" ]; then
+    cd "$KOH_ROOT"
+    git add "koh/issues/$KOH_ID_SLUG/explode-recording.jsonl"
+    git commit -m "$KOH_ID_SLUG: add explode recording" || true
+    echo "Recording committed."
+  else
+    echo "Skipped commit."
+  fi
 else
   echo "WARNING: could not extract recording."
 fi
@@ -108,7 +120,7 @@ echo "=== /explode complete ==="
 echo "Branch: $KOH_ID_SLUG"
 echo ""
 echo "Press enter to close this tmux session."
-read
+read -r
 WRAPPER_EOF
 } > "$wrapper"
 chmod +x "$wrapper"

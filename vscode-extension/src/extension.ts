@@ -1,5 +1,10 @@
 import * as vscode from "vscode";
-import { execSync } from "child_process";
+import { exec } from "child_process";
+import { promisify } from "util";
+
+const execAsync = promisify(exec);
+
+const SESSION_NAME_RE = /^koh-(think|explode)-[0-9]+-[a-z0-9-]+$/;
 
 interface KohSession {
   name: string;
@@ -7,17 +12,16 @@ interface KohSession {
   created: string;
 }
 
-function listKohSessions(): KohSession[] {
+async function listKohSessions(): Promise<KohSession[]> {
   try {
-    const output = execSync(
-      'tmux list-sessions -F "#{session_name}|#{session_attached}|#{session_created}" 2>/dev/null',
-      { encoding: "utf-8" }
+    const { stdout } = await execAsync(
+      'tmux list-sessions -F "#{session_name}|#{session_attached}|#{session_created}" 2>/dev/null'
     );
 
-    return output
+    return stdout
       .trim()
       .split("\n")
-      .filter((line) => line.startsWith("koh-"))
+      .filter((line) => SESSION_NAME_RE.test(line.split("|")[0]))
       .map((line) => {
         const [name, attached, created] = line.split("|");
         return {
@@ -32,6 +36,13 @@ function listKohSessions(): KohSession[] {
 }
 
 function attachToSession(sessionName: string) {
+  if (!SESSION_NAME_RE.test(sessionName)) {
+    vscode.window.showErrorMessage(
+      `Invalid koh session name: ${sessionName}`
+    );
+    return;
+  }
+
   const terminal = vscode.window.createTerminal({
     name: sessionName,
     shellPath: process.env.SHELL,
@@ -43,15 +54,27 @@ function attachToSession(sessionName: string) {
 
 export function activate(context: vscode.ExtensionContext) {
   // Track known sessions to detect new ones
-  let knownSessions = new Set(listKohSessions().map((s) => s.name));
+  let knownSessions = new Set<string>();
+
+  // Initialize known sessions
+  listKohSessions().then((sessions) => {
+    knownSessions = new Set(sessions.map((s) => s.name));
+  });
 
   // Poll for new koh tmux sessions every 2 seconds
-  const watcher = setInterval(() => {
-    const current = listKohSessions();
+  const watcher = setInterval(async () => {
+    const current = await listKohSessions();
     for (const session of current) {
       if (!knownSessions.has(session.name) && !session.attached) {
         knownSessions.add(session.name);
-        attachToSession(session.name);
+        const action = await vscode.window.showInformationMessage(
+          `koh session detected: ${session.name}`,
+          "Attach",
+          "Ignore"
+        );
+        if (action === "Attach") {
+          attachToSession(session.name);
+        }
       }
     }
     // Update known set (remove gone sessions)
@@ -62,7 +85,7 @@ export function activate(context: vscode.ExtensionContext) {
 
   // Manual attach command
   const attach = vscode.commands.registerCommand("koh.attach", async () => {
-    const sessions = listKohSessions();
+    const sessions = await listKohSessions();
 
     if (sessions.length === 0) {
       vscode.window.showInformationMessage("No koh sessions running.");
