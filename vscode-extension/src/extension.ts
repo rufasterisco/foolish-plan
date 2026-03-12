@@ -4,7 +4,7 @@ import { promisify } from "util";
 
 const execAsync = promisify(exec);
 
-const SESSION_NAME_RE = /^koh-(think|explode)-[0-9]+-[a-z0-9-]+$/;
+const SESSION_NAME_RE = /^koh-[a-z0-9-]+-(think|explode)-[0-9]+-[a-z0-9-]+$/;
 
 interface KohSession {
   name: string;

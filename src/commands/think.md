@@ -30,4 +30,4 @@ This seeds a new claude session with the pre-filled template and launches it in 
 
 The think session is ready. A terminal should open automatically via the koh extension. If not:
 - Attach via VS Code: Cmd+Shift+P → "koh: Attach to session"
-- Or from any terminal: `tmux attach -t koh-<KOH_ID_SLUG>`
+- Or from any terminal: `tmux attach -t koh-<repo>-think-<KOH_ID_SLUG>`
