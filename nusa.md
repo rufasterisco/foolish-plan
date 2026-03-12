@@ -8,6 +8,8 @@ Automatically snapshots Claude Code session logs into your git repo via LFS and 
 
 The AI conversation is part of the work product. It captures what the human decided, what was rejected, what the agent did autonomously. Today it lives in `~/.claude/projects/` — ephemeral, unversioned, machine-local. nusa makes it a git-tracked artifact.
 
+Because the session is snapshotted on every commit, you get **time travel for free**: checkout any commit, hydrate, and you have the conversation as it was when that code was committed. The reasoning and the code stay in sync across history.
+
 ### Why LFS?
 
 1. **Privacy.** Session logs contain full source code, prompts, reasoning. LFS lets you control where this data lives (see [Later](#later)).
@@ -52,9 +54,11 @@ repo_root=$(git rev-parse --show-toplevel 2>/dev/null) || exit 0
 echo "$session_id" >> "$repo_root/.nusa/active-sessions"
 ```
 
-### Hook 2: pre-commit (git hook)
+### Hook 2: post-commit (git hook)
 
-Copies each active session's JSONL from `~/.claude/projects/<encoded-cwd>/` into `.nusa/sessions/`, including subagent logs. Stages via `git add`. LFS handles the rest.
+After each commit, copies active session JONLs into `.nusa/sessions/` and creates a follow-up commit. Uses `--no-verify` on the session commit to avoid re-triggering hooks.
+
+Note: `git add` inside a post-commit hook is an antipattern — it breaks partial staging (`git add -p`) and stash-based workflows. post-commit avoids this entirely.
 
 ```bash
 #!/bin/bash
@@ -68,15 +72,20 @@ mkdir -p "$sessions_dir"
 encoded=$(pwd | tr '/.' '--')
 claude_dir="$HOME/.claude/projects/$encoded"
 
+copied=0
 while IFS= read -r session_id; do
   [ -z "$session_id" ] && continue
   src="$claude_dir/$session_id.jsonl"
   [ -f "$src" ] || continue
   cp "$src" "$sessions_dir/$session_id.jsonl"
   [ -d "$claude_dir/$session_id" ] && cp -R "$claude_dir/$session_id" "$sessions_dir/"
+  copied=1
 done < "$active_file"
 
-git add "$sessions_dir"
+if [ "$copied" -eq 1 ]; then
+  git add "$sessions_dir"
+  git commit --no-verify -m "nusa: save session logs"
+fi
 ```
 
 ### Hook 3: post-checkout / post-merge (git hooks)
@@ -87,7 +96,11 @@ Hydrates session logs from `.nusa/sessions/` into Claude's local storage. After 
 #!/bin/bash
 repo_root=$(git rev-parse --show-toplevel)
 sessions_dir="$repo_root/.nusa/sessions"
-[ -d "$sessions_dir" ] || exit 0
+
+# Only hydrate if there are actual session files
+shopt -s nullglob
+files=("$sessions_dir"/*.jsonl)
+[ ${#files[@]} -eq 0 ] && exit 0
 
 git lfs pull --include=".nusa/sessions/**"
 
@@ -95,8 +108,7 @@ encoded=$(pwd | tr '/.' '--')
 claude_dir="$HOME/.claude/projects/$encoded"
 mkdir -p "$claude_dir"
 
-for src in "$sessions_dir"/*.jsonl; do
-  [ -f "$src" ] || continue
+for src in "${files[@]}"; do
   session_id=$(basename "$src" .jsonl)
   cp "$src" "$claude_dir/$session_id.jsonl"
   [ -d "$sessions_dir/$session_id" ] && cp -R "$sessions_dir/$session_id" "$claude_dir/"
@@ -112,7 +124,7 @@ nusa provides hook scripts and configuration. You integrate them into your proje
 .nusa/
   hooks/
     session-start.sh      # Claude Code SessionStart hook
-    pre-commit.sh         # git pre-commit: save sessions
+    post-commit.sh         # git post-commit: save sessions
     post-checkout.sh      # git post-checkout/post-merge: hydrate sessions
   sessions/               # where session JONLs are stored (LFS-tracked)
 ```
@@ -139,11 +151,11 @@ nusa provides hook scripts and configuration. You integrate them into your proje
    ```
 
 3. Git hooks — call nusa's scripts from your existing hook setup:
-   - `pre-commit`: call `.nusa/hooks/pre-commit.sh`
+   - `post-commit`: call `.nusa/hooks/post-commit.sh`
    - `post-checkout`: call `.nusa/hooks/post-checkout.sh`
    - `post-merge`: call `.nusa/hooks/post-checkout.sh`
 
-   How you wire this depends on your project. If you use **husky**, add the calls to `.husky/pre-commit`. If you use **lefthook**, add entries to `lefthook.yml`. If you use **raw git hooks**, call the scripts from `.git/hooks/`. nusa doesn't own your git hooks — it provides scripts, you call them.
+   How you wire this depends on your project. If you use **husky**, add the calls to your husky hook files. If you use **lefthook**, add entries to `lefthook.yml`. If you use **raw git hooks**, call the scripts from `.git/hooks/`. nusa doesn't own your git hooks — it provides scripts, you call them.
 
 4. `.gitignore` — add `.nusa/active-sessions` (local state, not committed)
 
@@ -213,13 +225,13 @@ True deletion: delete the LFS object from the server. Pointer becomes dead. No h
 
 Proves the automated loop: session starts → hook captures ID → commits include session logs → checkout rehydrates.
 
-**Deliverables:** `install.sh`, SessionStart hook, pre-commit hook, post-checkout/post-merge hooks. GitHub's built-in LFS.
+**Deliverables:** `install.sh`, SessionStart hook, post-commit hook, post-checkout/post-merge hooks. GitHub's built-in LFS.
 
 **Dependencies:** `git`, `git-lfs`, `jq`
 
 **Validate:**
 - SessionStart hook captures session ID reliably
-- pre-commit copies correct JSONL and stages it
+- post-commit copies correct JSONL and creates session commit
 - LFS tracking works (pointers in git, content on GitHub)
 - Rehydration restores sessions, `claude --continue` works
 - Multiple concurrent sessions (append behavior)
@@ -245,6 +257,16 @@ Post-hoc, not at save time. Run gitleaks on JSONL, replace secrets with `[REDACT
 ### Session viewer
 
 Separate tool. Render session logs for code review: human messages only, file changes by type, timeline of collaboration vs autonomous execution.
+
+### Merge strategy for session files
+
+Not an issue for the common case: session files are UUID-named, so two people won't create the same file. Additive, no conflicts.
+
+Edge case: same session rehydrated on two machines, continued independently, both saved — same filename, diverged content. Needs a merge strategy (last-writer-wins, concatenate, or conflict). [claude-code-sync](https://github.com/perfectra1n/claude-code-sync) solves similar sync problems and is worth studying for this.
+
+### Active sessions cleanup
+
+`.nusa/active-sessions` grows indefinitely — every SessionStart appends, nothing removes. Stale entries are harmless (post-commit skips missing files) but the file gets noisy. Needs a cleanup mechanism: SessionEnd hook, periodic pruning, or a different tracking approach.
 
 ### Post-merge cleanup
 
