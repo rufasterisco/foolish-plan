@@ -14,7 +14,7 @@ No arguments needed — the script detects the issue from the current branch.
 ## Step 2: Tell the user
 
 After the script runs, tell the user:
-- The tmux session name (e.g. `koh-explode-4-add-auth`)
-- How to connect: `tmux attach -t koh-<id-slug>`
+- The tmux session name (e.g. `koh-myapp-explode-4-add-auth`)
+- How to connect: `tmux attach -t koh-<repo>-explode-<id-slug>`
 - How to disconnect: `ctrl+b d`
 - When they're done, just `/exit` from claude inside the tmux session — the recording will be extracted and committed automatically.

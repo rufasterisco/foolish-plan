@@ -10,6 +10,7 @@ SCRIPT_DIR="$(cd "$(dirname "$0")" && pwd)"
 LIB_DIR="$SCRIPT_DIR/../lib"
 
 source "$LIB_DIR/guards.sh"
+source "$LIB_DIR/id.sh"
 
 # --- Validate ---
 
@@ -37,7 +38,7 @@ fi
 
 # --- Check tmux session doesn't already exist ---
 
-session_name="koh-think-$id_slug"
+session_name="koh-$(repo_prefix)-think-$id_slug"
 
 if tmux has-session -t "$session_name" 2>/dev/null; then
   echo "ERROR: tmux session '$session_name' already exists" >&2

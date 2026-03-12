@@ -14,6 +14,7 @@ SCRIPT_DIR="$(cd "$(dirname "$0")" && pwd)"
 LIB_DIR="$SCRIPT_DIR/../lib"
 
 source "$LIB_DIR/guards.sh"
+source "$LIB_DIR/id.sh"
 
 # --- Validate ---
 
@@ -65,8 +66,10 @@ for wt_dir in "$worktrees_dir"/*/; do
   echo "Cleaning up: $branch"
 
   # Kill tmux sessions (ignore errors if they don't exist)
-  tmux kill-session -t "koh-think-$branch" 2>/dev/null || true
-  tmux kill-session -t "koh-explode-$branch" 2>/dev/null || true
+  local prefix
+  prefix=$(repo_prefix)
+  tmux kill-session -t "koh-${prefix}-think-$branch" 2>/dev/null || true
+  tmux kill-session -t "koh-${prefix}-explode-$branch" 2>/dev/null || true
 
   # Remove the worktree
   git worktree remove "$wt_dir" 2>/dev/null || {
