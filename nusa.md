@@ -24,7 +24,7 @@ Three hooks. No CLI, no manual steps after install.
 
 ### Hook 1: SessionStart (Claude Code hook)
 
-Claude fires `SessionStart` on every new session. Configured in `.claude/settings.local.json`:
+Claude Code fires a `SessionStart` hook on every new session. The hook config goes in `.claude/settings.local.json`:
 
 ```json
 {
@@ -56,10 +56,11 @@ echo "$session_id" >> "$repo_root/.nusa/active-sessions"
 
 ### Hook 2: post-commit (git hook)
 
-After each commit, copies active session JONLs into `.nusa/sessions/` and creates a follow-up commit. Uses `--no-verify` on the session commit to avoid re-triggering hooks.
+After each commit, copies active session JONLs into `.nusa/sessions/` and creates a follow-up commit with `--no-verify` to avoid re-triggering hooks.
 
-Note: `git add` inside a post-commit hook is an antipattern — it breaks partial staging (`git add -p`) and stash-based workflows. post-commit avoids this entirely.
+Why post-commit and not pre-commit: running `git add` inside a pre-commit hook is an antipattern — it breaks partial staging (`git add -p`) and stash-based workflows. Post-commit avoids this by creating a separate commit.
 
+`.nusa/hooks/post-commit.sh`:
 ```bash
 #!/bin/bash
 repo_root=$(git rev-parse --show-toplevel)
@@ -92,6 +93,7 @@ fi
 
 Hydrates session logs from `.nusa/sessions/` into Claude's local storage. After this, `claude --continue` or `--resume` picks them up.
 
+`.nusa/hooks/post-checkout.sh` (same script for both hooks):
 ```bash
 #!/bin/bash
 repo_root=$(git rev-parse --show-toplevel)
@@ -117,86 +119,109 @@ done
 
 ### Install
 
-nusa provides hook scripts and configuration. You integrate them into your project's git hook setup.
+nusa provides hook scripts and configuration. The user integrates them into their project's git hook setup.
 
-**What nusa ships:**
+**What nusa ships** (the project deliverables):
 ```
-.nusa/
+nusa/
   hooks/
     session-start.sh      # Claude Code SessionStart hook
-    post-commit.sh         # git post-commit: save sessions
+    post-commit.sh        # git post-commit: save sessions
     post-checkout.sh      # git post-checkout/post-merge: hydrate sessions
-  sessions/               # where session JONLs are stored (LFS-tracked)
+  install.sh              # convenience installer
+  README.md
 ```
 
-**What you configure:**
+**What gets installed into the target repo:**
+```
+<target-repo>/
+  .nusa/
+    hooks/
+      session-start.sh
+      post-commit.sh
+      post-checkout.sh
+    sessions/             # LFS-tracked session storage
+  .gitattributes          # (modified) adds LFS tracking for .nusa/sessions/**/*.jsonl
+  .gitignore              # (modified) adds .nusa/active-sessions
+  .claude/
+    settings.local.json   # (modified) adds SessionStart hook config
+  .git/hooks/
+    post-commit           # (created or chained) calls .nusa/hooks/post-commit.sh
+    post-checkout         # (created or chained) calls .nusa/hooks/post-checkout.sh
+    post-merge            # (created or chained) calls .nusa/hooks/post-checkout.sh
+```
 
-1. `.gitattributes` — LFS tracking:
+**What `install.sh` does:**
+
+1. Verify dependencies: `git`, `git-lfs`, `jq`
+2. Verify we're inside a git repo
+3. Create `.nusa/hooks/` and `.nusa/sessions/`
+4. Copy hook scripts into `.nusa/hooks/` (chmod +x)
+5. Add `.nusa/active-sessions` to `.gitignore`
+6. Add LFS tracking to `.gitattributes`:
    ```
    .nusa/sessions/**/*.jsonl filter=lfs diff=lfs merge=lfs -text
    ```
+7. Merge SessionStart hook config into `.claude/settings.local.json` (create if missing, merge into existing `hooks` object if present — do not overwrite other hooks)
+8. Install git hooks into `.git/hooks/`:
+   - For each hook (`post-commit`, `post-checkout`, `post-merge`):
+     - If no existing hook: create a script that calls `.nusa/hooks/<script>.sh`
+     - If existing hook: rename to `<hook>.pre-nusa`, create new script that calls the `.pre-nusa` script first, then `.nusa/hooks/<script>.sh`
+9. Run `git lfs install` if not already done
+10. Print summary of what was installed
 
-2. `.claude/settings.local.json` — SessionStart hook:
-   ```json
-   {
-     "hooks": {
-       "SessionStart": [
-         {
-           "matcher": "",
-           "hooks": [{"type": "command", "command": ".nusa/hooks/session-start.sh"}]
-         }
-       ]
-     }
-   }
-   ```
+**Manual integration** (for projects with existing hook managers):
 
-3. Git hooks — call nusa's scripts from your existing hook setup:
-   - `post-commit`: call `.nusa/hooks/post-commit.sh`
-   - `post-checkout`: call `.nusa/hooks/post-checkout.sh`
-   - `post-merge`: call `.nusa/hooks/post-checkout.sh`
+If the user uses husky, lefthook, or another hook manager, they skip steps 8 and instead add the calls to their own config:
+- `post-commit`: call `.nusa/hooks/post-commit.sh`
+- `post-checkout`: call `.nusa/hooks/post-checkout.sh`
+- `post-merge`: call `.nusa/hooks/post-checkout.sh`
 
-   How you wire this depends on your project. If you use **husky**, add the calls to your husky hook files. If you use **lefthook**, add entries to `lefthook.yml`. If you use **raw git hooks**, call the scripts from `.git/hooks/`. nusa doesn't own your git hooks — it provides scripts, you call them.
-
-4. `.gitignore` — add `.nusa/active-sessions` (local state, not committed)
-
-5. `git lfs install` if not already done
-
-**Convenience install script:**
-
-For projects with no existing git hook setup, `install.sh` does all of the above, installing raw git hooks directly into `.git/hooks/`. If a hook already exists, it renames it to `<hook>.pre-nusa` and chains it.
-
-```bash
-./install.sh
-# or
-curl -fsSL https://raw.githubusercontent.com/<org>/nusa/main/install.sh | sh
-```
+nusa doesn't own git hooks — it provides scripts, you call them.
 
 After install: start Claude, work, commit, push. Sessions persist. Pull on another machine, sessions rehydrate.
 
 ## Not in scope
 
 - No CLI after install — everything is hooks
-- No workflow opinions (branching, issues, lifecycle) — that's koh's layer
+- No workflow opinions (branching, issues, lifecycle)
 - No session viewing — separate tool
 - No LFS server management — bring your own
 - No secret scanning — see [Later](#later)
 
 ## Reference
 
-### Session storage
+### Claude Code session storage
 
+Claude Code stores session logs at:
 ```
 ~/.claude/projects/<encoded-cwd>/<session-id>.jsonl
-~/.claude/projects/<encoded-cwd>/<session-id>/subagents/agent-<id>.jsonl
 ```
 
-Encoding: absolute path with `/` and `.` replaced by `-` (`/Users/me/foo` → `-Users-me-foo`).
+With optional subagent logs:
+```
+~/.claude/projects/<encoded-cwd>/<session-id>/subagents/agent-<id>.jsonl
+~/.claude/projects/<encoded-cwd>/<session-id>/subagents/agent-<id>.meta.json
+```
 
-Sessions are directory-scoped. `claude` = new session. `claude --continue` = most recent. `claude --resume` = picker.
+**Directory encoding:** absolute path with `/` and `.` replaced by `-`:
+```
+/Users/me/projects/foo → -Users-me-projects-foo
+```
+
+```bash
+encode_project_dir() {
+  local abs_dir
+  abs_dir=$(cd "$1" && pwd)
+  echo "$abs_dir" | tr '/.' '--'
+}
+```
+
+**Session behavior:** `claude` = new session (new UUID). `claude --continue` = most recent in current directory. `claude --resume` = picker. Sessions are directory-scoped.
 
 ### JSONL format
 
-Each line is JSON. Key fields:
+Each line is a JSON object. Key fields:
 
 | What | How to identify |
 |---|---|
@@ -208,7 +233,7 @@ Each line is JSON. Key fields:
 
 ### Rehydration caveat
 
-JSONL messages contain `cwd` with the original machine's absolute path. Needs PoC testing: does `claude --continue` work when `cwd` doesn't match? If not, the hydration hook must rewrite `cwd` fields.
+JSONL messages contain `cwd` with the original machine's absolute path. Needs PoC testing: does `claude --continue` work when `cwd` doesn't match? If not, the hydration hook must rewrite `cwd` fields during copy.
 
 ### Branch lifecycle
 
@@ -223,21 +248,38 @@ True deletion: delete the LFS object from the server. Pointer becomes dead. No h
 
 ## PoC
 
-Proves the automated loop: session starts → hook captures ID → commits include session logs → checkout rehydrates.
+**Build this.** Everything above describes what to build. The PoC proves the full automated loop: session starts → hook captures ID → commits include session logs → checkout/pull rehydrates.
 
-**Deliverables:** `install.sh`, SessionStart hook, post-commit hook, post-checkout/post-merge hooks. GitHub's built-in LFS.
+### Deliverables
 
-**Dependencies:** `git`, `git-lfs`, `jq`
+1. `hooks/session-start.sh` — Claude Code SessionStart hook (as specified above)
+2. `hooks/post-commit.sh` — git post-commit hook (as specified above)
+3. `hooks/post-checkout.sh` — git post-checkout/post-merge hook (as specified above)
+4. `install.sh` — convenience installer (as specified above)
+5. `README.md` — usage instructions
 
-**Validate:**
-- SessionStart hook captures session ID reliably
-- post-commit copies correct JSONL and creates session commit
-- LFS tracking works (pointers in git, content on GitHub)
-- Rehydration restores sessions, `claude --continue` works
-- Multiple concurrent sessions (append behavior)
-- Cross-machine rehydration (cwd mismatch)
+### Dependencies
 
-**Not in PoC:** external LFS server, secret scrubbing, session viewer, post-merge cleanup automation, non-Claude tools.
+- `git`
+- `git-lfs`
+- `jq`
+
+### How to test
+
+1. Create a test git repo, run `install.sh`
+2. Verify `.nusa/` structure, `.gitattributes`, `.gitignore`, `.claude/settings.local.json`, `.git/hooks/` are all set up correctly
+3. Start a Claude Code session in the test repo — verify `.nusa/active-sessions` gets the session ID
+4. Make a commit — verify post-commit creates a follow-up `"nusa: save session logs"` commit with the JSONL in `.nusa/sessions/`
+5. Verify `git lfs ls-files` shows the JSONL tracked by LFS
+6. Clone the repo to a different directory — verify post-checkout hydrates the session into `~/.claude/projects/<new-encoded-dir>/`
+7. Run `claude --continue` in the clone — verify the session history is restored
+8. Test with multiple concurrent sessions (start two Claude sessions, verify both IDs in `.nusa/active-sessions`, both saved on commit)
+9. Checkout a branch with no session files (e.g., `main`) — verify hydration hook exits cleanly, no errors
+10. Test `install.sh` when git hooks already exist — verify `.pre-nusa` backup and chaining works
+
+### Not in PoC
+
+External LFS server, secret scrubbing, session viewer, post-merge cleanup automation, non-Claude tools.
 
 ## Later
 
