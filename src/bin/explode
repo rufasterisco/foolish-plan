@@ -2,9 +2,10 @@
 # explode: launch a coding session for a koh issue.
 # Must run from inside a koh worktree.
 #
-# 1. Extracts think recording (scrubbed), commits
-# 2. Launches tmux with claude
-# 3. Post-exit: extracts explode recording (scrubbed), commits
+# 1. Launches tmux with claude
+# 2. Post-exit: sets lifecycle state to done
+#
+# Session recording is handled by nusa (https://github.com/rufasterisco/nusa).
 #
 # Usage: run from inside a worktree (no arguments needed)
 
@@ -14,7 +15,6 @@ SCRIPT_DIR="$(cd "$(dirname "$0")" && pwd)"
 LIB_DIR="$SCRIPT_DIR/../lib"
 
 source "$LIB_DIR/guards.sh"
-source "$LIB_DIR/recording.sh"
 source "$LIB_DIR/state.sh"
 
 # --- Validate ---
@@ -41,28 +41,6 @@ if [ ! -f "$issue_dir/issue.md" ]; then
   exit 1
 fi
 
-# --- Extract think recording (all existing session logs) ---
-
-if extract_all_recordings "$root" "$issue_dir/think-recording.jsonl"; then
-  echo "Think recording saved."
-  printf "Commit think recording? [y/N] "
-  read -r answer
-  if [ "$answer" = "y" ] || [ "$answer" = "Y" ]; then
-    cd "$root"
-    git add "koh/issues/$id_slug/think-recording.jsonl"
-    git commit -m "$id_slug: add think recording" || true
-  else
-    echo "Skipped commit."
-  fi
-else
-  echo "WARNING: could not extract think recording (continuing anyway)."
-fi
-
-# --- Snapshot (baseline for explode — everything before this point is think) ---
-
-snapshot=$(mktemp)
-snapshot_recordings "$root" "$snapshot"
-
 # --- Check tmux session doesn't already exist ---
 
 session_name="koh-explode-$id_slug"
@@ -83,7 +61,6 @@ wrapper=$(mktemp)
   printf 'KOH_LIB_DIR=%q\n' "$LIB_DIR"
   printf 'KOH_ISSUE_DIR=%q\n' "$issue_dir"
   printf 'KOH_ID_SLUG=%q\n' "$id_slug"
-  printf 'KOH_SNAPSHOT=%q\n' "$snapshot"
   printf 'KOH_PROMPT=%q\n' "$root/.koh/prompts/explode.md"
   printf 'KOH_STATE_LIB=%q\n' "$LIB_DIR/state.sh"
 
@@ -93,30 +70,9 @@ unset CLAUDECODE
 cd "$KOH_ROOT"
 claude --append-system-prompt-file "koh/issues/$KOH_ID_SLUG/issue.md" --append-system-prompt-file "$KOH_PROMPT"
 
-# --- Post-session: extract recording and commit ---
-echo ""
-echo "=== Session ended. Extracting recording... ==="
+# --- Post-session ---
 
-source "$KOH_LIB_DIR/recording.sh"
 source "$KOH_STATE_LIB"
-
-if extract_new_recordings "$KOH_ROOT" "$KOH_SNAPSHOT" "$KOH_ISSUE_DIR/explode-recording.jsonl"; then
-  echo "Recording saved."
-  printf "Commit explode recording? [y/N] "
-  read -r answer
-  if [ "$answer" = "y" ] || [ "$answer" = "Y" ]; then
-    cd "$KOH_ROOT"
-    git add "koh/issues/$KOH_ID_SLUG/explode-recording.jsonl"
-    git commit -m "$KOH_ID_SLUG: add explode recording" || true
-    echo "Recording committed."
-  else
-    echo "Skipped commit."
-  fi
-else
-  echo "WARNING: could not extract recording."
-fi
-
-rm -f "$KOH_SNAPSHOT"
 
 # --- Set lifecycle state to done ---
 set_state "$KOH_ISSUE_DIR" done

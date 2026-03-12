@@ -2,8 +2,6 @@
 id: <KOH_ID_SLUG>
 branch: <KOH_ID_SLUG>
 worktree: <KOH_WORKTREE>
-think-recording: ./think-recording.jsonl
-explode-recording: ./explode-recording.jsonl
 ---
 
 # <KOH_ID_SLUG>: <short title>

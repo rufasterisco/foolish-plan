@@ -14,7 +14,7 @@ echo ""
 # --- Step 1: verify requirements ---
 
 missing=""
-for cmd in git claude tmux jq gitleaks; do
+for cmd in git claude tmux jq; do
   if ! command -v "$cmd" >/dev/null 2>&1; then
     missing="$missing $cmd"
   fi
@@ -25,6 +25,9 @@ if [ -n "$missing" ]; then
   echo "Please install them and try again." >&2
   exit 1
 fi
+
+# Note: Session recording is handled by nusa (https://github.com/rufasterisco/nusa).
+# nusa installation will be integrated in a future task.
 
 # --- Step 2: verify context ---
 

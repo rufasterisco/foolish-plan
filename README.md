@@ -5,11 +5,13 @@
 
 © 2026 [rufasterisco](https://github.com/rufasterisco). All rights reserved. See [LICENSE](LICENSE).
 
-An organized way to record what happens in coding sessions with a coding agent. Currently supports Claude Code.
+An organized way to run coding sessions with a coding agent. Currently supports Claude Code.
+
+Session recording is handled by [nusa](https://github.com/rufasterisco/nusa).
 
 ## Setup
 
-Requirements: `git`, `claude`, `tmux`, `jq`, `gitleaks`
+Requirements: `git`, `claude`, `tmux`, `jq`
 
 Run the install script in any repo:
 
@@ -48,10 +50,7 @@ From inside the worktree (the think session or a new terminal), run `/explode`.
 
 What happens:
 1. Validates you're in a koh worktree
-2. Snapshots existing session logs in `~/.claude/projects/`
-3. Extracts the think recording (new files since worktree creation), scrubs secrets via gitleaks, commits
-4. Opens a tmux session with a fresh claude. The issue template is there — claude reads it and executes the plan
-5. Post-exit: extracts the explode recording (new files since snapshot), scrubs secrets, commits
+2. Opens a tmux session with a fresh claude. The issue template is there — claude reads it and executes the plan
 
 ### 3. Result
 
@@ -60,11 +59,9 @@ Each issue directory contains:
 ```
 koh/issues/<id-slug>/
   issue.md                  # plan (filled during think)
-  think-recording.jsonl     # think session log (scrubbed)
-  explode-recording.jsonl   # explode session log (scrubbed)
 ```
 
-All three are committed to the branch alongside the code changes.
+The issue plan is committed to the branch alongside the code changes.
 
 ## Architecture
 
@@ -74,15 +71,9 @@ Each session runs in its own git worktree at `.koh-worktrees/<id-slug>/`. Worktr
 
 Worktrees persist after the session ends. They can be cleaned up after the branch is merged/PR'd — since it's just a branch checkout, you can always check it out again from the main repo.
 
-### Recordings
+### Session recording
 
-Claude Code saves session logs at `~/.claude/projects/<encoded-dir>/<session-id>.jsonl`. These are full JSONL conversation logs with user and assistant contributions labeled separately — code reviewers can see what the human asked and what the AI decided. Koh extracts these, scrubs secrets using gitleaks, and commits them as `think-recording.jsonl` and `explode-recording.jsonl`.
-
-Think and explode sessions run in the same worktree directory, so their logs share the same encoded project folder. Koh distinguishes them by snapshotting existing files before each phase — new files after the snapshot belong to that phase.
-
-### Secret scrubbing
-
-All recordings are scrubbed before commit using gitleaks. Detected secrets are replaced with `[REDACTED]`. Gitleaks is mandatory — extraction fails without it.
+Session recording is handled by [nusa](https://github.com/rufasterisco/nusa). nusa captures Claude Code session logs automatically via git hooks — koh doesn't need to manage recordings.
 
 ### tmux
 
@@ -95,7 +86,7 @@ Issue IDs are sequential, derived from existing git branch names matching `<numb
 ### Slash commands
 
 - `/think` — plan a new issue (creates worktree, fills template, launches think session)
-- `/explode` — start coding (extracts think recording, launches explode session)
+- `/explode` — start coding (launches explode session)
 
 ### VS Code extension
 
@@ -164,10 +155,6 @@ What the agent **can** do:
 ### Input validation
 
 Branch names and slugs are validated against `^[0-9]+-[a-z0-9-]+$`. Scripts use quoted heredocs and environment variables to prevent shell injection.
-
-### Secret scrubbing
-
-Recordings are scrubbed via gitleaks before commit. Gitleaks is required — if missing, recording extraction fails rather than silently committing secrets.
 
 ### Worktree isolation
 
